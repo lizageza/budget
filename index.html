@@ -1,0 +1,1539 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F6B5C">
+<title>Budget</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F6B5C'/%3E%3Cpath d='M9 22V10h8a4 4 0 010 8H9m8 0h1a4 4 0 010 8' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round' transform='translate(0 -2)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Budget — ledger look: warm paper surfaces, one deep-teal accent, tabular mono numbers. Hero = "Szabadon elkölthető". */
+:root{
+  --bg:#EEEDE7; --surface:#FBFAF7; --surface-2:#F4F3EE; --ink:#16201D; --muted:#5B6662; --line:#D9D7CE; --line-2:#E7E5DD;
+  --accent:#0F6B5C; --accent-ink:#FFFFFF; --accent-soft:#DCEDE8;
+  --good:#1d7a45; --warn:#9a6700; --bad:#b3261e; --bad-soft:#F7E1DE; --good-soft:#DFF0E4;
+  --rev:#3A55C7; --rev-soft:#E2E7FA;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  --shadow:0 1px 2px rgba(22,32,29,.05),0 6px 20px rgba(22,32,29,.07);
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --r:12px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121514; --surface:#1B1E1D; --surface-2:#171A19; --ink:#E8EEEB; --muted:#9FAAA6; --line:#2E3432; --line-2:#252A28;
+  --accent:#4FC3A8; --accent-ink:#0E1614; --accent-soft:#1F3631;
+  --good:#5cc27f; --warn:#e3b341; --bad:#ff8a80; --bad-soft:#3A2220; --good-soft:#1C3325;
+  --rev:#8EA2F5; --rev-soft:#252B47;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121514; --surface:#1B1E1D; --surface-2:#171A19; --ink:#E8EEEB; --muted:#9FAAA6; --line:#2E3432; --line-2:#252A28;
+  --accent:#4FC3A8; --accent-ink:#0E1614; --accent-soft:#1F3631;
+  --good:#5cc27f; --warn:#e3b341; --bad:#ff8a80; --bad-soft:#3A2220; --good-soft:#1C3325;
+  --rev:#8EA2F5; --rev-soft:#252B47;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+  color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);margin:0;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+a{color:inherit;text-decoration-color:var(--line);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--accent)}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px}
+@media (max-width:560px){.wrap{padding-inline:16px}}
+.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);letter-spacing:-.01em}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.right{text-align:right}
+
+/* header */
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line-2)}
+.bar{display:flex;align-items:center;gap:14px;min-height:60px}
+.brand{font:600 15px/1 var(--f-mono);letter-spacing:.14em;color:var(--accent);white-space:nowrap}
+.brand b{display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--accent);margin-right:8px;vertical-align:1px}
+nav.tabs{display:flex;gap:4px;margin-left:8px}
+nav.tabs button{background:none;border:0;padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer;font-size:14.5px;display:flex;gap:7px;align-items:center}
+nav.tabs button svg{width:17px;height:17px}
+nav.tabs button:hover{color:var(--ink);background:var(--surface-2)}
+nav.tabs button[aria-current="page"]{color:var(--ink);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.sb{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.sb .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px}
+.sb .ok .dot{background:var(--good)} .sb .err{color:var(--bad)} .sb .err .dot{background:var(--bad)} .sb .demo .dot{background:var(--warn)}
+@media (max-width:760px){
+  header.top{backdrop-filter:none;background:var(--bg)}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  nav.tabs button{flex-direction:column;gap:2px;font-size:11px;padding:6px 4px;flex:1}
+  nav.tabs button[aria-current="page"]{box-shadow:none;background:var(--accent-soft);color:var(--accent)}
+  body{padding-bottom:78px}
+  .sb .lbl{display:none}
+}
+
+/* generic */
+main{padding-block:18px 60px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);min-width:0}
+.card>.hd{display:flex;align-items:center;gap:10px;padding:14px 16px 10px}
+.card>.hd h2,.card>.hd h3{margin:0;font-size:15px;font-weight:600}
+.card>.bd{padding:0 16px 16px}
+.k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 13px;cursor:pointer;font-size:14px;min-height:38px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{padding:5px 10px;min-height:32px;font-size:13px}
+.btn svg{width:16px;height:16px}
+.icon-btn{border:0;background:transparent;cursor:pointer;border-radius:8px;padding:6px;display:inline-flex;color:var(--muted)}
+.icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+.icon-btn svg{width:18px;height:18px}
+.grid{display:grid;gap:16px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:12.5px;color:var(--muted)}
+.inp{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:9px 11px;min-height:40px;width:100%;min-width:0}
+.inp:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.inp.num{text-align:right}
+select.inp{padding-right:28px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;border-radius:6px;padding:1px 7px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;line-height:18px}
+.chip.rev{color:var(--rev);background:var(--rev-soft);border-color:transparent;font-weight:600}
+.chip.done{color:var(--good);background:var(--good-soft);border-color:transparent}
+.chip.over{color:var(--bad);background:var(--bad-soft);border-color:transparent}
+.toggle{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.toggle input{appearance:none;width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;cursor:pointer;margin:0;flex:none;transition:background .15s}
+.toggle input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.toggle input:checked{background:var(--accent)}
+.toggle input:checked::after{transform:translateX(16px)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:2px;background:var(--surface-2)}
+.seg button{border:0;background:none;padding:5px 11px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+
+/* month header */
+.mhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.mhead h1{margin:0;font-size:24px;font-weight:600;letter-spacing:-.01em}
+.mhead .per{color:var(--muted);font-size:14px}
+.mhead .nav{display:flex;gap:2px}
+.mhead .nav .icon-btn{border:1px solid var(--line);background:var(--surface)}
+.mhead .spacer{flex:1}
+.pill{font-size:12.5px;padding:3px 9px;border-radius:20px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.pill.now{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
+
+.mgrid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:16px;align-items:start}
+@media (max-width:900px){.mgrid{grid-template-columns:minmax(0,1fr)}}
+.col{display:grid;gap:16px;min-width:0}
+
+/* hero */
+.hero{padding:18px 18px 16px;background:var(--accent);color:var(--accent-ink);border-color:transparent;position:relative;overflow:hidden}
+.hero .k{color:inherit;opacity:.8}
+.hero .big{font:600 44px/1.05 var(--f-mono);letter-spacing:-.03em;margin:6px 0 2px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.hero .big small{font-size:20px;font-weight:500;opacity:.8;margin-left:6px}
+.hero .big.neg{color:#FFD9D4}
+.hero .calc{display:grid;grid-template-columns:1fr auto;gap:3px 12px;font-size:13.5px;margin-top:12px;opacity:.95}
+.hero .calc .num{text-align:right}
+.hero .calc .tot{border-top:1px solid color-mix(in srgb,var(--accent-ink) 35%,transparent);padding-top:4px;font-weight:600}
+.hero .balrow{display:flex;gap:8px;align-items:center;margin-top:12px}
+.hero .balrow input{background:color-mix(in srgb,var(--accent-ink) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent-ink) 30%,transparent);color:inherit;border-radius:9px;padding:8px 11px;width:100%;min-width:0;text-align:right;font:500 17px var(--f-mono)}
+.hero .balrow input::placeholder{color:inherit;opacity:.55}
+.hero .balrow input:focus{outline:2px solid var(--accent-ink);outline-offset:1px}
+.hero .balrow label{white-space:nowrap;font-size:13px;opacity:.85}
+.hero .hint{font-size:12.5px;opacity:.8;margin-top:8px}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border-radius:var(--r);overflow:hidden;border:1px solid var(--line)}
+.kpi{background:var(--surface);padding:12px 14px;min-width:0}
+.kpi .v{font:600 19px/1.2 var(--f-mono);font-variant-numeric:tabular-nums;margin-top:3px;overflow-wrap:anywhere}
+.kpi .s{font-size:12.5px;color:var(--muted);margin-top:1px}
+.kpi.wide{grid-column:1/-1}
+.kpi .rk{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+
+/* due list */
+.due{list-style:none;margin:0;padding:0}
+.due li{display:grid;grid-template-columns:34px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 16px;border-top:1px solid var(--line-2);cursor:pointer}
+.due li:hover{background:var(--surface-2)}
+.due .day{font:600 13px var(--f-mono);color:var(--muted);text-align:center;border:1px solid var(--line);border-radius:7px;padding:3px 0;background:var(--surface-2)}
+.due .day.soon{color:var(--warn);border-color:currentColor}
+.due .day.late{color:var(--bad);border-color:currentColor}
+.due .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.due .nm .sub{display:block;font-size:12px;color:var(--muted)}
+.due .amt{text-align:right}
+.due .ok{border:1px solid var(--line);background:var(--surface);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.due .ok:hover{color:var(--good);border-color:var(--good)}
+.due .ok svg{width:17px;height:17px}
+.empty{padding:14px 16px;color:var(--muted);font-size:14px}
+
+/* categories */
+.cat{border-top:1px solid var(--line-2)}
+.cat:first-child{border-top:0}
+.cat>summary{list-style:none;display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 16px;cursor:pointer}
+.cat>summary::-webkit-details-marker{display:none}
+.cat>summary .ic{font-size:16px;text-align:center}
+.cat>summary .nm{font-weight:600;font-size:14.5px}
+.cat>summary .sums{text-align:right;font-size:13.5px;white-space:nowrap}
+.cat>summary .sums .t{color:var(--muted);font-size:12px}
+.meter{grid-column:2/-1;height:5px;border-radius:3px;background:var(--line-2);overflow:hidden;position:relative}
+.meter i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--accent)}
+.meter i.over{background:var(--bad)}
+.rows{padding:0 0 6px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px 60px;gap:8px;align-items:center;padding:6px 16px 6px 48px;cursor:pointer;min-height:40px}
+.row:hover{background:var(--surface-2)}
+.row .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.row .nm .sub{font-size:12px;color:var(--muted);margin-left:6px}
+.row .p,.row .a{text-align:right;font-size:13.5px}
+.row .p{color:var(--muted)}
+.row .fl{display:flex;gap:4px;justify-content:flex-end}
+.row.done .nm{color:var(--muted)}
+.row.zero{opacity:.55}
+.rowhd{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px 60px;gap:8px;padding:0 16px 4px 48px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rowhd span{text-align:right}
+@media (max-width:560px){
+  .row,.rowhd{grid-template-columns:minmax(0,1fr) 78px 78px 44px;padding-left:16px;gap:6px}
+  .row .fl .chip{padding:1px 4px}
+}
+.addrow{padding:6px 16px 10px 48px}
+@media (max-width:560px){.addrow{padding-left:16px}}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,14,13,.38);z-index:40;opacity:0;pointer-events:none;transition:opacity .18s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;z-index:41;background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;transition:transform .2s ease;top:0;right:0;bottom:0;width:min(420px,100%);transform:translateX(105%);border-left:1px solid var(--line)}
+.drawer.on{transform:none}
+@media (max-width:760px){
+  .drawer{top:auto;left:0;width:100%;max-height:88vh;border-radius:16px 16px 0 0;transform:translateY(105%);border-left:0;border-top:1px solid var(--line)}
+}
+.drawer .dh{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line-2)}
+.drawer .dh h3{margin:0;font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer .db{padding:16px;overflow:auto;display:grid;gap:14px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.addline{display:flex;gap:8px}
+.addline .inp{flex:1}
+.diffline{font-size:13.5px;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* tables */
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px}
+table.t th,table.t td{padding:7px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+table.t th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:right;background:var(--surface);position:sticky;top:0}
+table.t th:first-child,table.t td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
+table.t td{text-align:right}
+table.t tr.cur td{background:var(--accent-soft)}
+table.t tr.cur td:first-child{background:var(--accent-soft)}
+table.t tr.sec td{font-weight:600;background:var(--surface-2)}
+table.t tr.sec td:first-child{background:var(--surface-2)}
+table.t td.ed{cursor:cell}
+table.t td.ed:hover{outline:1px solid var(--accent);outline-offset:-1px}
+table.t td.ed input{width:84px;text-align:right;border:1px solid var(--accent);border-radius:5px;padding:2px 4px;background:var(--surface);font:inherit}
+table.t td.act{color:var(--ink)} table.t td.pl{color:var(--muted)}
+table.t tfoot td{font-weight:600;border-top:1px solid var(--line)}
+
+/* charts */
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .gl{stroke:var(--line-2);stroke-width:1}
+.chart .ax{fill:var(--muted);font:11px var(--f-body)}
+.chart .hit{fill:transparent;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);padding:0 16px 12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:9px;padding:8px 10px;font-size:12.5px;z-index:5;min-width:170px;opacity:0;transition:opacity .1s}
+.tip.on{opacity:1}
+.tip .h{font-weight:600;margin-bottom:4px}
+.tip .r{display:flex;gap:10px;justify-content:space-between}
+.tip .r i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.tip .r.tot{border-top:1px solid var(--line-2);margin-top:3px;padding-top:3px;font-weight:600}
+
+/* assets */
+.agrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.agrid{grid-template-columns:minmax(0,1fr)}}
+.acct .lines{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1fr);gap:8px 10px;align-items:center}
+.acct .cur{font:600 13px var(--f-mono);color:var(--muted)}
+.acct .eq{text-align:right;font-size:13px;color:var(--muted)}
+.acct .sum{display:flex;justify-content:space-between;border-top:1px solid var(--line-2);margin-top:12px;padding-top:10px;font-weight:600}
+.compo{display:flex;height:14px;border-radius:5px;overflow:hidden;gap:2px;margin:6px 0 10px}
+.compo i{display:block;height:100%;min-width:3px}
+.totals{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;font-size:14px}
+.totals .num{text-align:right}
+.totals .big{font-size:18px;font-weight:600;border-top:1px solid var(--line);padding-top:8px}
+table.t td input.inp{min-height:32px;padding:4px 8px;font-size:13.5px}
+
+/* items / settings */
+.irow{display:grid;grid-template-columns:minmax(140px,1.6fr) 64px 100px 118px 92px 40px 40px 40px;gap:8px;align-items:center;padding:6px 16px;border-top:1px solid var(--line-2)}
+.irow.ih{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:0;padding-bottom:2px}
+.irow .inp{min-height:34px;padding:5px 8px;font-size:13.5px}
+.irow.off{opacity:.5}
+@media (max-width:760px){
+  .irow{grid-template-columns:1fr 1fr 1fr 40px 40px 40px;row-gap:6px}
+  .irow>:first-child{grid-column:1/-1}
+  .irow>.lbl-m{display:block}
+  .irow.ih{display:none}
+}
+.setg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.setg{grid-template-columns:minmax(0,1fr)}}
+.setg .bd{display:grid;gap:12px}
+code{font:12.5px var(--f-mono);background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;overflow-wrap:anywhere}
+
+/* setup */
+.setup{max-width:620px;margin:40px auto}
+.setup .card{padding:22px}
+.setup h2{margin:0 0 6px;font-size:20px}
+.setup p{color:var(--muted);margin:6px 0 14px}
+.choices{display:grid;gap:10px}
+.choice{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:center;text-align:left;padding:14px;border:1px solid var(--line);border-radius:11px;background:var(--surface);cursor:pointer}
+.choice:hover{border-color:var(--accent)}
+.choice[disabled]{opacity:.5;cursor:not-allowed}
+.choice svg{width:26px;height:26px;color:var(--accent)}
+.choice b{display:block}
+.choice span{font-size:13px;color:var(--muted)}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:all .2s;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px)}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.toast button{background:none;border:0;color:var(--accent-soft);font-weight:600;cursor:pointer;padding:0}
+@media (max-width:760px){.toast{bottom:90px}}
+.banner{background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:9px 13px;font-size:13.5px;margin-bottom:14px}
+.banner.warn{background:var(--bad-soft);color:var(--bad)}
+
+/* ticker */
+.ticker{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 36px;gap:10px;margin-bottom:16px;align-items:stretch}
+.tk{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;min-width:0}
+.tk .tv{font-size:18px;font-weight:600;margin:2px 0 4px}
+.chgs{display:flex;gap:4px;flex-wrap:wrap}
+.chg{font:500 11.5px var(--f-mono);border-radius:5px;padding:1px 5px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.chg .lb{font-family:var(--f-body);font-weight:400;opacity:.75;margin-right:4px}
+.chg.up{color:var(--good);background:var(--good-soft)}
+.chg.dn{color:var(--bad);background:var(--bad-soft)}
+.tkr{align-self:center}
+@media (max-width:900px){.ticker{grid-template-columns:repeat(2,minmax(0,1fr))}.tkr{display:none}}
+
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap bar">
+  <div class="brand"><b></b>BUDGET</div>
+  <nav class="tabs" id="tabs" hidden>
+    <button data-tab="month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Hónap</span></button>
+    <button data-tab="year"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Év</span></button>
+    <button data-tab="assets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l9-6 9 6M5 10v9M19 10v9M9.5 10v9M14.5 10v9M3 20h18"/></svg><span>Vagyon</span></button>
+    <button data-tab="items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" stroke-linecap="round"/></svg><span>Tételek</span></button>
+    <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg><span>Beállítás</span></button>
+  </nav>
+  <div class="sb"><span id="sbStore"></span><span id="sbSave"></span></div>
+</div></header>
+<main class="wrap">
+  <section id="view-setup" hidden></section>
+  <section id="view-month" hidden></section>
+  <section id="view-year" hidden></section>
+  <section id="view-assets" hidden></section>
+  <section id="view-items" hidden></section>
+  <section id="view-settings" hidden></section>
+</main>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drTitle"></aside>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+<script>
+const SEED = {"app": "budget", "version": 1, "savedAt": null, "settings": {"rekaPct": 52, "rekaRound": 5000, "rekaMode": "ceil", "startDay": 10, "folder": "Budget"}, "cats": [{"id": "inc", "name": "Bevételek", "icon": "💵", "kind": "income", "u": "2026-09-30T12:00:00.000Z"}, {"id": "lak", "name": "Lakás & rezsi", "icon": "🏠", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "dig", "name": "Digitális rezsi", "icon": "📱", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "csal", "name": "Család", "icon": "👨‍👩‍👧‍👦", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "gyer", "name": "Gyerekek", "icon": "🎒", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "vall", "name": "Vállalkozói", "icon": "💼", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "megt", "name": "Megtakarítás & hitel", "icon": "💰", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "eseti", "name": "Eseti", "icon": "📝", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}], "items": [], "months": {}, "assets": {"accounts": {}, "stocks": {}, "crypto": {}, "debts": {}, "snaps": {}}, "deleted": {}};
+</script>
+<script>
+"use strict";
+/* ================= config ================= */
+const APP_VERSION = "1.1";
+const CLIENT_ID_DEFAULT = "9dc570fe-f641-46ed-93be-5414be4ae0c9";            // Microsoft app (client) ID – a Beállításokban is megadható
+const GRAPH_SCOPES = ["Files.ReadWrite"];
+const FILE = "budget.json";
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const nowIso = () => new Date().toISOString();
+const pad = n => String(n).padStart(2, "0");
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const uid = p => (p || "x") + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const NBSP = " ";
+function fmt(n, opt){
+  if (n == null || n === "" || isNaN(n)) return "–";
+  const v = Math.round(Number(n));
+  const s = Math.abs(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+  return (v < 0 ? "−" : (opt && opt.sign && v > 0 ? "+" : "")) + s + (opt && opt.noUnit ? "" : NBSP + "Ft");
+}
+function fmtN(n, d){ if (n == null || isNaN(n)) return "–"; return Number(n).toLocaleString("hu-HU", { maximumFractionDigits: d ?? 2 }); }
+function parseAmt(s){
+  if (s == null) return null;
+  s = String(s).replace(/\s| |Ft/gi, "").replace(/−/g, "-").replace(",", ".");
+  if (s === "") return null;
+  if (!/^[-+]?[\d.]+([-+][\d.]+)*$/.test(s)) return NaN;
+  return Math.round((s.match(/[-+]?[\d.]+/g) || []).reduce((a, x) => a + parseFloat(x), 0) * 1e8) / 1e8;   // 8 tizedes (kripto)
+}
+const HU_MONTHS = ["január","február","március","április","május","június","július","augusztus","szeptember","október","november","december"];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const mkParse = k => { const [y, m] = k.split("-").map(Number); return { y, m }; };
+const mkOf = (y, m) => { while (m > 12) { m -= 12; y++; } while (m < 1) { m += 12; y--; } return `${y}-${pad(m)}`; };
+const mkAdd = (k, n) => { const { y, m } = mkParse(k); return mkOf(y, m + n); };
+const mkName = k => { const { y, m } = mkParse(k); return `${cap(HU_MONTHS[m-1])} ${y}`; };
+const mkShort = k => { const { y, m } = mkParse(k); return `${cap(HU_MONTHS[m-1]).slice(0,3)} ${String(y).slice(2)}`; };
+function startDay(){ return (S.data && S.data.settings && S.data.settings.startDay) || 10; }
+function currentMk(d){ d = d || new Date(); const sd = startDay(); return d.getDate() >= sd ? mkOf(d.getFullYear(), d.getMonth()+1) : mkOf(d.getFullYear(), d.getMonth()); }
+function period(k){
+  const { y, m } = mkParse(k), sd = startDay();
+  const start = new Date(y, m-1, sd), end = new Date(y, m, sd - 1);
+  let mondays = 0; for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) if (d.getDay() === 1) mondays++;
+  return { start, end, mondays };
+}
+const dshort = d => `${pad(d.getMonth()+1)}.${pad(d.getDate())}.`;
+
+/* ================= state ================= */
+const S = { data: null, mk: null, tab: "month", mode: null, showZero: false, yearMode: "a", matrix: "p", open: {} };
+const LS = {
+  get(k, d){ try { const v = localStorage.getItem("budget." + k); return v == null ? d : JSON.parse(v); } catch(x) { return d; } },
+  set(k, v){ try { localStorage.setItem("budget." + k, JSON.stringify(v)); } catch(x) {} }
+};
+
+/* ================= data access ================= */
+const D = () => S.data;
+const items = () => D().items.slice().sort((a,b) => (a.o ?? 0) - (b.o ?? 0));
+const itemById = id => D().items.find(i => i.id === id);
+const catById = id => D().cats.find(c => c.id === id);
+const month = k => D().months[k];
+const monthKeys = () => Object.keys(D().months).sort();
+const isIncomeCat = cid => { const c = catById(cid); return c && c.kind === "income"; };
+function stamp(o){ o.u = nowIso(); return o; }
+
+/* ================= calculation ================= */
+function monthLines(k){
+  const mo = month(k); if (!mo) return [];
+  const out = [];
+  for (const it of items()) {
+    const ln = mo.lines[it.id];
+    if (!ln && it.off) continue;
+    const l = ln || { p: 0 };
+    out.push({ kind: "item", id: it.id, name: it.name, cat: it.cat, due: it.due, note: it.note, carry: !!it.carry,
+      p: +l.p || 0, a: l.a == null ? null : +l.a, rev: !!l.rev, done: !!l.done, has: !!ln, off: !!it.off, lnote: l.note });
+  }
+  for (const [id, e] of Object.entries(mo.extras || {})) {
+    out.push({ kind: "extra", id, name: e.name || "Eseti tétel", cat: e.cat || "eseti", due: e.due, p: +e.p || 0, a: e.a == null ? null : +e.a, rev: !!e.rev, done: !!e.done, has: true, lnote: e.note });
+  }
+  return out;
+}
+/* A kiadás „várható tény” értéke: a beírt tény, ennek hiányában a terv. */
+function expA(l){ return l.a != null ? l.a : l.p; }   // ha van beírt tény, az számít; egyébként a terv
+function incA(l){ return l.a != null ? l.a : 0; }   // bevételnél a tény csak a ténylegesen beírt összeg
+function remaining(l){ return l.done ? 0 : Math.max(l.p - (l.a || 0), 0); }
+function rekaOf(bal){
+  const st = D().settings, pct = (st.rekaPct ?? 52) / 100, r = st.rekaRound || 5000;
+  if (!(bal > 0)) return 0;
+  const x = bal * pct / r;
+  return (st.rekaMode === "round" ? Math.round(x) : Math.ceil(x - 1e-9)) * r;
+}
+function calc(k){
+  const mo = month(k); if (!mo) return null;
+  const L = monthLines(k);
+  const r = { k, lines: L, inc: { p: 0, a: 0 }, exp: { p: 0, a: 0 }, cats: {}, revOpen: 0, revOpenN: 0, openN: 0 };
+  for (const c of D().cats) r.cats[c.id] = { p: 0, a: 0, act: 0 };
+  for (const l of L) {
+    const inc = isIncomeCat(l.cat);
+    const cc = r.cats[l.cat] || (r.cats[l.cat] = { p: 0, a: 0, act: 0 });
+    if (inc) { r.inc.p += l.p; r.inc.a += incA(l); cc.p += l.p; cc.a += incA(l); cc.act += l.a || 0; }
+    else {
+      r.exp.p += l.p; r.exp.a += expA(l); cc.p += l.p; cc.a += expA(l); cc.act += l.a || 0;
+      const rem = remaining(l);
+      if (rem > 0) { r.openN++; if (l.rev) { r.revOpen += rem; r.revOpenN++; } }
+    }
+  }
+  r.bal = { p: r.inc.p - r.exp.p, a: r.inc.a - r.exp.a };
+  r.reka = rekaOf(r.bal.p);
+  r.rekaPaid = mo.meta && mo.meta.rekaPaid != null ? +mo.meta.rekaPaid : null;
+  r.revolut = mo.meta && mo.meta.revolut != null && mo.meta.revolut !== "" ? +mo.meta.revolut : null;
+  r.keret = r.revolut == null ? null : r.revolut - r.revOpen;
+  return r;
+}
+
+/* ================= month generation ================= */
+function newMonthFrom(k){
+  const prevK = monthKeys().filter(x => x < k).pop();
+  const prev = prevK ? month(prevK) : null;
+  const { m } = mkParse(k), per = period(k);
+  const mo = { lines: {}, extras: {}, meta: stamp({}) };
+  for (const it of items()) {
+    if (it.off) continue;
+    const pl = prev && prev.lines[it.id];
+    let p;
+    if (it.carry) p = 0;
+    else if (it.rule && it.rule.perMonday) p = per.mondays * it.rule.perMonday;
+    else if (it.months && it.months.length) p = it.months.includes(m) ? (it.plan || (pl && pl.p) || 0) : 0;
+    else p = pl ? (+pl.p || 0) : (it.plan || 0);
+    const ln = stamp({ p });
+    if (pl ? pl.rev : it.rev) ln.rev = true;
+    mo.lines[it.id] = ln;
+  }
+  return mo;
+}
+
+/* ================= merge (record level, newest "u" wins) ================= */
+function newer(a, b){ if (!a) return b; if (!b) return a; return (b.u || "") > (a.u || "") ? b : a; }
+function mergeObj(A, B, path, del){
+  const out = {};
+  for (const k of new Set([...Object.keys(A || {}), ...Object.keys(B || {})])) {
+    const v = newer((A || {})[k], (B || {})[k]);
+    const t = del[path + "/" + k];
+    if (t && t >= (v.u || "")) continue;
+    out[k] = v;
+  }
+  return out;
+}
+function mergeArr(A, B, path, del){
+  const m = mergeObj(Object.fromEntries((A||[]).map(x => [x.id, x])), Object.fromEntries((B||[]).map(x => [x.id, x])), path, del);
+  const order = [...(A||[]).map(x => x.id), ...(B||[]).map(x => x.id)];
+  return [...new Set(order)].filter(id => m[id]).map(id => m[id]);
+}
+function mergeData(A, B){
+  if (!A) return B; if (!B) return A;
+  const del = { ...(A.deleted || {}) };
+  for (const [k, t] of Object.entries(B.deleted || {})) if (!del[k] || del[k] < t) del[k] = t;
+  const out = { ...A, deleted: del };
+  out.settings = newer(A.settings, B.settings);
+  out.cats = mergeArr(A.cats, B.cats, "cats", del);
+  out.items = mergeArr(A.items, B.items, "items", del);
+  out.months = {};
+  for (const k of new Set([...Object.keys(A.months || {}), ...Object.keys(B.months || {})])) {
+    const a = (A.months || {})[k], b = (B.months || {})[k];
+    if (!a || !b) { out.months[k] = a || b; continue; }
+    out.months[k] = { meta: newer(a.meta, b.meta), lines: mergeObj(a.lines, b.lines, `months/${k}/lines`, del), extras: mergeObj(a.extras, b.extras, `months/${k}/extras`, del) };
+  }
+  const aa = A.assets || {}, bb = B.assets || {};
+  out.assets = {};
+  for (const g of ["accounts","stocks","crypto","debts","snaps"]) out.assets[g] = mergeObj(aa[g], bb[g], "assets/" + g, del);
+  out.assets.px = newer(aa.px, bb.px);
+  return out;
+}
+function normalize(d){
+  d.settings = { rekaPct: 52, rekaRound: 5000, rekaMode: "ceil", startDay: 10, folder: "Budget", ...(d.settings || {}) };
+  d.cats = d.cats || []; d.items = d.items || []; d.months = d.months || {}; d.deleted = d.deleted || {};
+  d.assets = d.assets || {};
+  for (const g of ["accounts","stocks","crypto","debts","snaps"]) d.assets[g] = d.assets[g] || {};
+  for (const mo of Object.values(d.months)) { mo.lines = mo.lines || {}; mo.extras = mo.extras || {}; mo.meta = mo.meta || {}; }
+  for (const [id, dt] of Object.entries(d.assets.debts)) if (!dt.id) dt.id = id;
+  // v1.1: a „HUF eseti” sor megszűnik (eseti kiadás váltja ki)
+  const he = d.items.find(i => i.id === "huf-eseti"); if (he && !he.off && !(d.settings.mig || []).includes("hufeseti")) { he.off = true; he.u = nowIso(); d.settings.mig = [...(d.settings.mig || []), "hufeseti"]; }
+  return d;
+}
+function payload(){ return JSON.stringify({ ...D(), app: "budget", version: 1, savedAt: nowIso() }, null, 1); }
+
+/* ================= storage: common ================= */
+const ST = { store: null, ver: null, t: null, saving: false, again: false, dirty: false, lastCheck: 0 };
+function persist(){
+  ST.dirty = true;
+  if (!ST.store) return status("nem ment", "demo");
+  status("Mentés…"); clearTimeout(ST.t); ST.t = setTimeout(flush, 500);
+}
+async function flush(){
+  if (!ST.store) return;
+  if (ST.saving) { ST.again = true; return; }
+  ST.saving = true;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const cur = await ST.store.head();
+      if (cur && ST.ver && cur !== ST.ver) {
+        const r = await ST.store.read();
+        if (r) { S.data = normalize(mergeData(S.data, r.data)); toast("Máshol is módosult az adat, összefésültem."); renderAll(); }
+      }
+      await ST.store.backup().catch(() => {});
+      try { ST.ver = await ST.store.write(payload(), cur); break; }
+      catch (x) { if (x.conflict && attempt < 2) { ST.ver = "?"; continue; } throw x; }
+    }
+    ST.dirty = false;
+    status("Mentve " + new Date().toLocaleTimeString("hu-HU", { hour: "2-digit", minute: "2-digit" }), "ok");
+  } catch (x) {
+    console.error(x);
+    status(x.auth ? "Újra be kell lépni" : "Mentési hiba: " + (x.message || x.name), "err");
+    if (x.auth) toast("A OneDrive-bejelentkezés lejárt.", () => msLogin(), "Belépés");
+  } finally { ST.saving = false; if (ST.again) { ST.again = false; flush(); } }
+}
+async function checkRemote(force){
+  if (!ST.store || ST.saving || ST.dirty) return;
+  if (!force && Date.now() - ST.lastCheck < 15000) return;
+  ST.lastCheck = Date.now();
+  try {
+    const cur = await ST.store.head();
+    if (cur && ST.ver && cur !== ST.ver) {
+      const r = await ST.store.read(); if (!r) return;
+      S.data = normalize(mergeData(S.data, r.data)); ST.ver = r.ver; renderAll();
+      toast("Frissítve a legújabb mentésből.");
+    }
+  } catch (x) { console.warn("check", x); }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkRemote(true); });
+window.addEventListener("focus", () => checkRemote());
+setInterval(() => { if (document.visibilityState === "visible") checkRemote(); }, 60000);
+window.addEventListener("beforeunload", e => { if (ST.dirty && ST.store) { flush(); e.preventDefault(); e.returnValue = ""; } });
+
+/* ================= storage: local folder (File System Access) ================= */
+function idb(){ return new Promise((res, rej) => { const q = indexedDB.open("budget-local", 1); q.onupgradeneeded = () => q.result.createObjectStore("kv"); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+async function kvGet(k){ try { const db = await idb(); return await new Promise(r => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => r(q.result); q.onerror = () => r(null); }); } catch(x) { return null; } }
+async function kvSet(k, v){ try { const db = await idb(); await new Promise(r => { const t = db.transaction("kv","readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = r; t.onerror = r; }); } catch(x) {} }
+function LocalStore(dir){
+  const fileH = async create => dir.getFileHandle(FILE, create ? { create: true } : undefined);
+  return {
+    kind: "local", label: dir.name,
+    async head(){ try { return String((await (await fileH()).getFile()).lastModified); } catch(x) { if (x.name === "NotFoundError") return null; throw x; } },
+    async read(){ try { const f = await (await fileH()).getFile(); return { data: normalize(JSON.parse(await f.text())), ver: String(f.lastModified), txt: null }; } catch(x) { if (x.name === "NotFoundError") return null; throw x; } },
+    async write(txt){ const fh = await fileH(true); const w = await fh.createWritable(); await w.write(txt); await w.close(); return String((await fh.getFile()).lastModified); },
+    async backup(){
+      if (LS.get("bk.local." + dir.name) === today()) return;
+      let src; try { src = await (await fileH()).getFile(); } catch(x) { return; }
+      const d = await dir.getDirectoryHandle("mentesek", { create: true });
+      const name = `budget-${today()}.json`;
+      try { await d.getFileHandle(name); } catch(x) { const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(await src.text()); await w.close(); }
+      LS.set("bk.local." + dir.name, today());
+      const names = []; for await (const [n] of d.entries()) if (/^budget-\d{4}-\d\d-\d\d\.json$/.test(n)) names.push(n);
+      names.sort(); for (const n of names.slice(0, Math.max(0, names.length - 60))) await d.removeEntry(n).catch(() => {});
+    },
+    async writeFile(sub, name, txt){ const d = await dir.getDirectoryHandle(sub, { create: true }); const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close(); }
+  };
+}
+
+/* ================= storage: OneDrive (Microsoft Graph) ================= */
+const MS = { pca: null, account: null };
+const clientId = () => LS.get("clientId", "") || CLIENT_ID_DEFAULT;
+const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/, "");
+const graphAvailable = () => location.protocol === "https:" || location.hostname === "localhost";
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Nem tölthető be: " + src)); document.head.appendChild(s); }); }
+async function msalInit(){
+  if (MS.pca) return MS.pca;
+  if (!window.msal) { try { await loadScript("msal-browser.min.js"); } catch(x) { await loadScript("https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.30.0/lib/msal-browser.min.js"); } }
+  const pca = new msal.PublicClientApplication({
+    auth: { clientId: clientId(), authority: "https://login.microsoftonline.com/consumers", redirectUri: redirectUri() },
+    cache: { cacheLocation: "localStorage" }
+  });
+  await pca.initialize();
+  const r = await pca.handleRedirectPromise();
+  MS.account = (r && r.account) || pca.getAllAccounts()[0] || null;
+  MS.pca = pca; return pca;
+}
+async function msToken(){
+  try { return (await MS.pca.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: MS.account })).accessToken; }
+  catch (x) { const e = new Error("Bejelentkezés szükséges"); e.auth = true; throw e; }
+}
+async function msLogin(first){
+  await msalInit();
+  if (S.data && ST.dirty) LS.set("pending", S.data);          // átirányítás előtt ne vesszen el a nem mentett változás
+  await MS.pca.loginRedirect({ scopes: GRAPH_SCOPES, ...(first ? { prompt: "select_account" } : {}), ...(MS.account ? { loginHint: MS.account.username } : {}) });
+}
+async function msLogout(){ if (!MS.pca) return; LS.set("mode", null); await MS.pca.logoutRedirect({ account: MS.account, postLogoutRedirectUri: redirectUri() }); }
+function GraphStore(folder){
+  const seg = p => p.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+  const base = `https://graph.microsoft.com/v1.0/me/drive/root:/${seg(folder)}`;
+  async function g(url, opt){
+    const tok = await msToken();
+    const r = await fetch(url, { ...(opt || {}), headers: { Authorization: "Bearer " + tok, ...((opt || {}).headers || {}) } });
+    if (r.status === 401) { const e = new Error("Lejárt bejelentkezés"); e.auth = true; throw e; }
+    return r;
+  }
+  return {
+    kind: "graph", label: "OneDrive / " + folder,
+    async head(){ const r = await g(`${base}/${FILE}?select=eTag`); if (r.status === 404) return null; if (!r.ok) throw new Error("OneDrive HTTP " + r.status); return (await r.json()).eTag; },
+    async read(){
+      const r = await g(`${base}/${FILE}?select=eTag,@microsoft.graph.downloadUrl`); if (r.status === 404) return null;
+      if (!r.ok) throw new Error("OneDrive HTTP " + r.status);
+      const meta = await r.json();
+      const c = await fetch(meta["@microsoft.graph.downloadUrl"], { cache: "no-store" });
+      if (!c.ok) throw new Error("Letöltési hiba " + c.status);
+      return { data: normalize(JSON.parse(await c.text())), ver: meta.eTag };
+    },
+    async write(txt, cur){
+      const h = { "Content-Type": "application/json" }; if (cur) h["If-Match"] = cur;
+      const r = await g(`${base}/${FILE}:/content`, { method: "PUT", headers: h, body: txt });
+      if (r.status === 412 || r.status === 409) { const e = new Error("Ütközés"); e.conflict = true; throw e; }
+      if (!r.ok) throw new Error("OneDrive HTTP " + r.status);
+      return (await r.json()).eTag;
+    },
+    async backup(){
+      if (LS.get("bk.graph", "") === today()) return;
+      const r = await g(`${base}/${FILE}?select=@microsoft.graph.downloadUrl`); if (!r.ok) return;
+      const c = await fetch((await r.json())["@microsoft.graph.downloadUrl"], { cache: "no-store" }); if (!c.ok) return;
+      const put = await g(`${base}/mentesek/budget-${today()}.json:/content?@microsoft.graph.conflictBehavior=fail`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: await c.text() });
+      if (put.ok || put.status === 409) LS.set("bk.graph", today());
+    },
+    async writeFile(sub, name, txt){ const r = await g(`${base}/${seg(sub)}/${encodeURIComponent(name)}:/content`, { method: "PUT", headers: { "Content-Type": "text/plain" }, body: txt }); if (!r.ok) throw new Error("OneDrive HTTP " + r.status); }
+  };
+}
+
+/* ================= live prices ================= */
+async function getJSON(url){ const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+/* százalékos változás egy idősorból: [[dátum, érték], ...] növekvő sorrendben */
+function changes(series){
+  if (!series || series.length < 2) return null;
+  const [lastD, last] = series[series.length - 1];
+  const at = days => { const t = Date.parse(lastD) - days * 864e5; let v = null; for (const [d, x] of series) if (Date.parse(d) <= t) v = x; return v; };
+  const pct = v => v ? (last / v - 1) * 100 : null;
+  return { d: pct(series[series.length - 2][1]), w: pct(at(7)), m: pct(at(30)) };
+}
+async function refreshPrices(quiet){
+  const A = D().assets, old = A.px || {};
+  const px = { ...old, crypto: { ...(old.crypto || {}) }, stock: { ...(old.stock || {}) }, chg: { ...(old.chg || {}) } };
+  const errs = [];
+  // deviza: EKB-adatsor az elmúlt ~40 napra (Frankfurter)
+  try {
+    const from = new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10);
+    const d = await getJSON(`https://api.frankfurter.dev/v1/${from}..?base=EUR&symbols=HUF,USD`);
+    const days = Object.keys(d.rates).sort();
+    const eur = days.map(k => [k, d.rates[k].HUF]), usd = days.map(k => [k, d.rates[k].HUF / d.rates[k].USD]);
+    px.EUR = eur[eur.length - 1][1]; px.USD = usd[usd.length - 1][1]; px.fxDate = days[days.length - 1];
+    px.chg.EUR = changes(eur); px.chg.USD = changes(usd);
+  } catch (x) {
+    try { const d = await getJSON("https://open.er-api.com/v6/latest/EUR"); px.EUR = d.rates.HUF; px.USD = d.rates.HUF / d.rates.USD; px.fxDate = today(); }
+    catch (y) { errs.push("deviza"); }
+  }
+  // kripto: ár + 24 h / 7 nap / 30 nap változás egy hívással (CoinGecko)
+  const ids = [...new Set(Object.values(A.crypto).map(c => c.cg).filter(Boolean))];
+  if (ids.length) {
+    try {
+      const d = await getJSON(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(",")}&price_change_percentage=24h,7d,30d`);
+      for (const r of d) { px.crypto[r.id] = r.current_price; px.chg["cg:" + r.id] = { d: r.price_change_percentage_24h_in_currency, w: r.price_change_percentage_7d_in_currency, m: r.price_change_percentage_30d_in_currency }; }
+    } catch (x) { errs.push("kripto"); }
+  }
+  // részvény: napi záróárak (Alpha Vantage, ingyenes kulcs)
+  const key = D().settings.avKey;
+  if (key) for (const s of Object.values(A.stocks)) {
+    if (!s.sym) continue;
+    try {
+      const d = await getJSON(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&outputsize=compact&symbol=${encodeURIComponent(s.sym)}&apikey=${encodeURIComponent(key)}`);
+      const ts = d["Time Series (Daily)"]; if (!ts) throw new Error(d.Note || d.Information || "nincs adat");
+      const ser = Object.keys(ts).sort().slice(-45).map(k => [k, +ts[k]["4. close"]]);
+      px.stock[s.sym] = ser[ser.length - 1][1]; px.stockDate = ser[ser.length - 1][0]; px.chg["st:" + s.sym] = changes(ser);
+    } catch (x) { errs.push(s.sym); console.warn(x); }
+  }
+  px.at = nowIso(); px.u = nowIso();
+  A.px = px; persist(); renderAll();
+  if (!quiet) toast(errs.length ? "Részben frissült (nem sikerült: " + errs.join(", ") + ")" : "Árfolyamok frissítve.");
+}
+function fx(cur){
+  if (cur === "HUF") return 1;
+  const px = D().assets.px || {}, st = D().settings;
+  if (st["fx" + cur]) return +st["fx" + cur];           // kézi felülírás
+  return px[cur] || { USD: 336, EUR: 386 }[cur];
+}
+function cryptoPrice(c){ const px = D().assets.px || {}; return (c.manual && c.usd) || (px.crypto && px.crypto[c.cg]) || c.usd || 0; }
+function stockPrice(s){ const px = D().assets.px || {}; return (s.manual && s.usd) || (px.stock && px.stock[s.sym]) || s.usd || 0; }
+/* Tartozás: a megadott egyenleg a „from” hónap törlesztése UTÁN értendő.
+   Csökkenti: a későbbi hónapok törlesztő sora, a hitelre jelölt eseti törlesztések. Növeli: a kártyás költés és a díj (napló). */
+function debtParts(dt){
+  const cur = currentMk(), from = dt.from || "2026-02", base = dt.baseAt || "";
+  let paid = 0, extra = 0, charge = 0, fee = 0;
+  for (const k of monthKeys()) {
+    if (k > cur) continue;
+    const mo = month(k);
+    if (k > from && dt.item) { const ln = mo.lines[dt.item]; if (ln) paid += ln.a != null ? +ln.a : (k < cur ? +ln.p || 0 : 0); }
+    if (k >= from) for (const x of Object.values(mo.extras)) if (x.debt === dt.id && (k > from || (x.at || x.u || "") > base)) extra += +(x.a ?? x.p) || 0;
+  }
+  for (const l of Object.values(dt.log || {})) if ((l.at || "") > base) { if (l.t === "fee") fee += +l.amt || 0; else charge += +l.amt || 0; }
+  const rem = Math.max((+dt.start || 0) - paid - extra + charge + fee, 0);
+  return { rem, paid, extra, charge, fee };
+}
+function debtRemaining(dt){ return debtParts(dt).rem; }
+function debtForecast(dt){
+  const rem = debtRemaining(dt); if (!rem) return { rem, end: null, monthly: 0 };
+  const cur = currentMk(), nx = month(mkAdd(cur, 1)), cl = month(cur) && dt.item ? month(cur).lines[dt.item] : null;
+  const monthly = (nx && dt.item && nx.lines[dt.item] && +nx.lines[dt.item].p) || (cl && +cl.p) || 0;
+  if (!monthly) return { rem, end: null, monthly: 0 };
+  const n = Math.ceil(rem / monthly), paidNow = cl && (cl.a != null || cl.done);
+  return { rem, monthly, end: mkAdd(cur, paidNow ? n : n - 1) };
+}
+/* a Revolut forintegyenlege a főlapon megadott érték (a legutóbbi hónapból, amelyben van) */
+function revolutNow(){
+  const cur = currentMk();
+  for (const k of monthKeys().filter(k => k <= cur).reverse()) { const m = month(k).meta; if (m.revolut != null && m.revolut !== "") return +m.revolut; }
+  return null;
+}
+function assetTotals(){
+  const A = D().assets, t = { raif: 0, rev: 0, stock: 0, crypto: 0, HUF: 0, EUR: 0, USD: 0, debts: 0 };
+  for (const [id, a] of Object.entries(A.accounts)) for (const cur of ["HUF","EUR","USD"]) {
+    const amt = id === "rev" && cur === "HUF" ? (revolutNow() ?? +a.bal.HUF ?? 0) : (+a.bal[cur] || 0);
+    const v = (amt || 0) * fx(cur); t[id] = (t[id] || 0) + v; t[cur] += v;
+  }
+  t.stockUsd = 0; t.cryptoUsd = 0;
+  for (const s of Object.values(A.stocks)) t.stockUsd += (+s.qty || 0) * stockPrice(s);
+  for (const c of Object.values(A.crypto)) t.cryptoUsd += (+c.qty || 0) * cryptoPrice(c);
+  t.stock = t.stockUsd * fx("USD"); t.crypto = t.cryptoUsd * fx("USD");
+  t.revHuf = revolutNow() || 0;
+  for (const d of Object.values(A.debts)) t.debts += debtRemaining(d);
+  t.total = t.HUF + t.EUR + t.USD + t.stock + t.crypto;
+  t.net = t.total - t.debts;
+  return t;
+}
+
+/* ================= UI basics ================= */
+const ICON = {
+  prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6"/></svg>',
+  today: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8.5"/></svg>',
+  push: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h12M12 7l5 5-5 5M20 5v14"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>',
+  cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 01-.6-9 6 6 0 0111.6 1.6A3.8 3.8 0 0117.5 18z"/></svg>',
+  card: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+};
+let toastT = null;
+function toast(msg, undo, label){
+  const el = $("#toast"); el.innerHTML = esc(msg) + (undo ? ` <button type="button">${esc(label || "Visszavonás")}</button>` : "");
+  el.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("on"), undo ? (label ? 15000 : 6000) : 2800);
+  if (undo) el.querySelector("button").onclick = () => { undo(); el.classList.remove("on"); };
+}
+function status(text, cls){
+  const el = $("#sbSave"); el.className = cls || ""; el.innerHTML = `<span class="dot"></span><span class="lbl">${esc(text)}</span>`; el.title = text;
+}
+function storeLabel(){
+  const el = $("#sbStore");
+  el.innerHTML = ST.store ? `<span class="lbl">${esc(ST.store.label)}</span>` : `<span class="demo"><span class="dot"></span><span class="lbl">bemutató</span></span>`;
+}
+function snapshot(){ return JSON.stringify(S.data); }
+function withUndo(msg, fn){ const before = snapshot(); fn(); persist(); renderAll(); toast(msg, () => { S.data = normalize(JSON.parse(before)); stampAllChanged(); persist(); renderAll(); }); }
+function stampAllChanged(){ /* visszavonás után minden rekord frissebb legyen, mint a távoli */ const t = nowIso();
+  const st = o => { if (o && typeof o === "object") o.u = t; };
+  st(D().settings); D().cats.forEach(st); D().items.forEach(st);
+  for (const mo of Object.values(D().months)) { st(mo.meta); Object.values(mo.lines).forEach(st); Object.values(mo.extras).forEach(st); }
+  for (const g of ["accounts","stocks","crypto","debts","snaps"]) Object.values(D().assets[g]).forEach(st);
+}
+function download(name, text, type){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: type || "application/json" }));
+  a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function applyTheme(){ const t = LS.get("theme", "auto"); if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t); }
+
+/* ================= tabs ================= */
+function showApp(on){
+  $("#tabs").hidden = !on; $("#view-setup").hidden = on;
+  for (const v of ["month","year","assets","items","settings"]) $("#view-" + v).hidden = !on || S.tab !== v;
+}
+function setTab(t){
+  S.tab = t; LS.set("tab", t);
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === t ? "page" : "false"));
+  showApp(true); renderAll(); window.scrollTo({ top: 0 });
+  if (t === "assets") { const px = D().assets.px; if (!px || !px.at || Date.now() - Date.parse(px.at) > 3600e3) refreshPrices(true); }
+}
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab); });
+function renderAll(){
+  if (!S.data) return;
+  storeLabel();
+  const f = { month: renderMonth, year: renderYear, assets: renderAssets, items: renderItems, settings: renderSettings }[S.tab];
+  if (f) f();
+  if (DR.open) DR.refresh && DR.refresh();
+}
+
+/* ================= month view ================= */
+function catOrder(){ return D().cats.slice().sort((a,b) => (a.kind === "income" ? -1 : 0) - (b.kind === "income" ? -1 : 0)); }
+function dueClass(l, k){
+  if (!l.due || k !== currentMk()) return "";
+  const per = period(k), t = new Date(); t.setHours(0,0,0,0);
+  let d = new Date(per.start.getFullYear(), per.start.getMonth(), l.due); if (d < per.start) d = new Date(per.start.getFullYear(), per.start.getMonth() + 1, l.due);
+  const diff = (d - t) / 864e5; return diff < 0 ? "late" : diff <= 3 ? "soon" : "";
+}
+function dueSortKey(l){ if (!l.due) return 99; const sd = startDay(); return l.due >= sd ? l.due - sd : l.due + 31 - sd; }
+function chgChip(label, v){
+  if (v == null || isNaN(v)) return `<span class="chg"><span class="lb">${label}</span> –</span>`;
+  const up = v >= 0;
+  return `<span class="chg ${up ? "up" : "dn"}" title="${label}: ${up ? "+" : ""}${v.toFixed(2)}%"><span class="lb">${label}</span>${up ? "▲" : "▼"} ${Math.abs(v).toLocaleString("hu-HU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>`;
+}
+function debtCard(){
+  const ds = Object.values(D().assets.debts); if (!ds.length) return "";
+  return `<div class="card"><div class="hd"><h2>Hitelkártyák</h2><span class="muted small">${fmt(ds.reduce((s, d) => s + debtRemaining(d), 0))}</span></div><ul class="due">${ds.map(d => { const f = debtForecast(d);
+    return `<li data-debt="${esc(d.id)}"><span class="day">${ICON.card}</span><span class="nm">${esc(d.name)}<span class="sub">${f.monthly ? `havi ${fmt(f.monthly)} · vége: ${f.end ? mkParse(f.end).y + ". " + HU_MONTHS[mkParse(f.end).m - 1].slice(0, 3) + "." : "–"}` : f.rem ? "eseti törlesztéssel" : "rendezve"}</span></span><span class="amt num">${fmt(f.rem)}</span><button class="ok" data-act="debtadd" data-id="${esc(d.id)}" title="Költés, díj vagy eseti törlesztés" aria-label="${esc(d.name)}: új tétel">${ICON.plus}</button></li>`; }).join("")}</ul></div>`;
+}
+function openDebtEntry(id, type){
+  const dt = D().assets.debts[id]; let t = type || "charge";
+  openDrawer(() => esc(dt.name), () => `
+    <div class="seg" role="group" aria-label="Típus">${[["charge","Költés"],["fee","Díj"],["pay","Eseti törlesztés"]].map(([k, n]) => `<button data-dr="t:${k}" aria-pressed="${t === k}">${n}</button>`).join("")}</div>
+    <div class="field"><label for="dbA">Összeg</label><input class="inp num" id="dbA" inputmode="numeric" autocomplete="off" autofocus placeholder="Ft"></div>
+    <div class="field"><label for="dbN">Megjegyzés</label><input class="inp" id="dbN" autocomplete="off" placeholder="${t === "fee" ? "pl. éves kártyadíj" : t === "pay" ? "" : "pl. Tesco, alkatrész"}"></div>
+    <div id="dbPay" ${t === "pay" ? "" : "hidden"}><label class="toggle"><input type="checkbox" id="dbRev" checked> Revolutról utalom <span class="muted small">(levonja a keretből)</span></label>
+      <p class="muted small" style="margin:6px 0 0">Eseti kiadásként bekerül a(z) ${mkName(currentMk()).toLowerCase()}i hónapba, és csökkenti a tartozást.</p></div>
+    <p class="muted small" id="dbInfo" style="margin:0" ${t === "pay" ? "hidden" : ""}>Csak a tartozást növeli, a havi költségvetést nem. A kártyát a törlesztés terheli meg.</p>
+    <div class="actions"><button class="btn primary" data-dr="save">${ICON.check} Rögzítés</button></div>
+    ${debtLogHtml(dt)}`);
+  DR.handler = (what) => {
+    if (what.startsWith("t:")) { t = what.slice(2); document.querySelectorAll('#drawer .seg button').forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); $("#dbPay").hidden = t !== "pay"; $("#dbInfo").hidden = t === "pay"; return; }
+    if (what === "save") {
+      const v = parseAmt($("#dbA").value); if (!v || Number.isNaN(v)) return toast("Adj meg összeget.");
+      const note = $("#dbN").value.trim();
+      if (t === "pay") {
+        const k = currentMk(); if (!month(k)) D().months[k] = newMonthFrom(k);
+        const xid = uid("x"); month(k).extras[xid] = stamp({ name: `${dt.name} eseti törlesztés${note ? " – " + note : ""}`, p: 0, a: v, done: true, debt: dt.id, at: nowIso(), cat: "megt", ...($("#dbRev").checked ? { rev: true } : {}) });
+      } else {
+        dt.log = { ...(dt.log || {}), [uid("l")]: { t, amt: v, note, at: nowIso() } }; stamp(dt);
+      }
+      persist(); closeDrawer(); renderAll(); toast(`${dt.name}: ${t === "pay" ? "törlesztés" : t === "fee" ? "díj" : "költés"} ${fmt(v)} rögzítve.`);
+    }
+    if (what.startsWith("rm:")) { const lid = what.slice(3), l = { ...dt.log }; delete l[lid]; dt.log = l; stamp(dt); persist(); renderAll(); DR.refresh(); closeDrawer(); openDebtEntry(id, t); }
+  };
+}
+function debtLogHtml(dt){
+  const base = dt.baseAt || "";
+  const rows = [];
+  for (const [lid, l] of Object.entries(dt.log || {})) rows.push({ at: l.at, txt: `${l.t === "fee" ? "Díj" : "Költés"}${l.note ? ": " + esc(l.note) : ""}`, amt: +l.amt, lid, old: (l.at || "") <= base });
+  for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.debt === dt.id) rows.push({ at: x.at || x.u, txt: esc(x.name), amt: -(+(x.a ?? x.p) || 0) });
+  if (!rows.length) return "";
+  rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+  return `<div><div class="k" style="margin-bottom:6px">Napló</div>${rows.slice(0, 12).map(r => `<div style="display:flex;gap:8px;align-items:center;font-size:13.5px;padding:4px 0;border-top:1px solid var(--line-2);${r.old ? "opacity:.5" : ""}"><span class="muted num" style="font-size:12px">${r.at ? new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" }) : ""}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.txt}</span><span class="num ${r.amt > 0 ? "neg" : "pos"}">${r.amt > 0 ? "+" : "−"}${fmt(Math.abs(r.amt), { noUnit: true })}</span>${r.lid ? `<button class="icon-btn" data-dr="rm:${r.lid}" aria-label="Törlés">${ICON.trash}</button>` : ""}</div>`).join("")}${rows.some(r => r.old) ? `<p class="muted small" style="margin:6px 0 0">A halvány tételek a legutóbb beírt egyenleg előttiek, azokat már nem számolom.</p>` : ""}</div>`;
+}
+function tickerStrip(){
+  const A = D().assets, px = A.px || {}, chg = px.chg || {};
+  const btc = Object.values(A.crypto).find(c => c.cg === "bitcoin"), st = Object.values(A.stocks)[0];
+  const tiles = [
+    st && { n: st.sym + " (USD)", v: stockPrice(st) ? "$" + fmtN(stockPrice(st), 2) : "–", c: chg["st:" + st.sym] },
+    btc && { n: "BTC (USD)", v: cryptoPrice(btc) ? "$" + fmtN(Math.round(cryptoPrice(btc)), 0) : "–", c: chg["cg:bitcoin"] },
+    { n: "EUR/HUF", v: fmtN(fx("EUR"), 2), c: chg.EUR },
+    { n: "USD/HUF", v: fmtN(fx("USD"), 2), c: chg.USD }
+  ].filter(Boolean);
+  return `<div class="ticker">${tiles.map(t => `<div class="tk"><div class="k">${esc(t.n)}</div><div class="tv num">${t.v}</div><div class="chgs">${chgChip("1 nap", t.c && t.c.d)}${chgChip("1 hét", t.c && t.c.w)}${chgChip("1 hó", t.c && t.c.m)}</div></div>`).join("")}
+    <button class="icon-btn tkr" data-act="px" title="Árfolyamok frissítése${px.at ? " (utoljára " + new Date(px.at).toLocaleTimeString("hu-HU", { hour: "2-digit", minute: "2-digit" }) + ")" : ""}" aria-label="Árfolyamok frissítése">${ICON.refresh}</button></div>`;
+}
+function renderMonth(){
+  const v = $("#view-month"), k = S.mk, mo = month(k), per = period(k), cur = currentMk();
+  const left = Math.round((per.end - new Date().setHours(0,0,0,0)) / 864e5) + 1;
+  const keys = monthKeys();
+  let h = `<div class="mhead">
+    <div class="nav"><button class="icon-btn" data-act="mprev" aria-label="Előző hónap">${ICON.prev}</button><button class="icon-btn" data-act="mnext" aria-label="Következő hónap">${ICON.next}</button></div>
+    <h1>${mkName(k)}</h1>
+    ${k === cur ? `<span class="pill now">aktuális</span>` : `<button class="btn sm ghost" data-act="mtoday">${ICON.today} Aktuális hónap</button>`}
+    ${mo && mo.meta.closed ? `<span class="pill">lezárva</span>` : ""}
+    <span class="per">${dshort(per.start)}–${dshort(per.end)} · ${per.mondays} hétfő${k === cur ? ` · még ${left} nap` : ""}</span>
+    <span class="spacer"></span>
+    ${mo ? `<label class="toggle small muted"><input type="checkbox" data-act="zero" ${S.showZero ? "checked" : ""}> 0 Ft-os sorok</label>` : ""}
+  </div>`;
+  if (mo && mo.meta.legacy) h += `<div class="banner">Ez a hónap a régi havi lapokból jött. A digitális rezsi itt még egy összevont sor.${k === "2026-04" ? " Áprilisra nincs tényadat, ezért minden sor terv szerint szerepel." : ""}</div>`;
+  if (!mo) {
+    const prevK = keys.filter(x => x < k).pop();
+    v.innerHTML = h + `<div class="card"><div class="hd"><h2>Ehhez az időszakhoz még nincs terv</h2></div><div class="bd"><p class="muted">A program a tételek listájából és ${prevK ? "a(z) " + mkName(prevK).toLowerCase() + "i tervből" : "az alaptervekből"} készít tervet: a heti szabályos tételeket a hétfők számából, az éves tételeket a megadott hónapban számolja. Utána minden sor szerkeszthető.</p><button class="btn primary" data-act="mcreate">${ICON.plus} Terv létrehozása</button></div></div>`;
+    return;
+  }
+  const c = calc(k);
+  const keret = c.keret;
+  h += tickerStrip();
+  h += `<div class="mgrid"><div class="col">
+    <div class="card hero">
+      <div class="k">Szabadon elkölthető</div>
+      <div class="big ${keret != null && keret < 0 ? "neg" : ""}">${keret == null ? "–" : fmt(keret, { noUnit: true }) + "<small>Ft</small>"}</div>
+      <div class="calc">
+        <span>Revolut egyenleg</span><span class="num">${c.revolut == null ? "–" : fmt(c.revolut)}</span>
+        <span>Revolutról még fizetendő (${c.revOpenN} tétel)</span><span class="num">−${fmt(c.revOpen)}</span>
+      </div>
+      <div class="balrow"><label for="revBal">Revolut most:</label><input id="revBal" inputmode="numeric" autocomplete="off" data-f="rev-bal" placeholder="egyenleg Ft-ban" value="${c.revolut == null ? "" : c.revolut}"></div>
+      ${c.revolut == null ? `<div class="hint">Írd be a Revolut aktuális egyenlegét, és kiszámolom a keretet.</div>` : mo.meta.revAt ? `<div class="hint">Egyenleg megadva: ${new Date(mo.meta.revAt).toLocaleString("hu-HU", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>` : ""}
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Bevétel (beérkezett)</div><div class="v">${fmt(c.inc.a)}</div><div class="s">terv ${fmt(c.inc.p)}${c.inc.a < c.inc.p ? " · még " + fmt(c.inc.p - c.inc.a) : ""}</div></div>
+      <div class="kpi"><div class="k">Kiadás (várható)</div><div class="v">${fmt(c.exp.a)}</div><div class="s">terv ${fmt(c.exp.p)} · <span class="${c.exp.a > c.exp.p ? "neg" : "pos"}">${fmt(c.exp.a - c.exp.p, { sign: true })}</span></div></div>
+      ${c.rekaPaid == null
+        ? `<div class="kpi"><div class="k">Rékának utalandó (${D().settings.rekaPct}%)</div><div class="v">${fmt(c.reka)}</div><div class="s rk"><span>neked marad: ${fmt(c.bal.p - c.reka)}</span><button class="btn sm" data-act="reka">Utalva</button></div></div>`
+        : `<div class="kpi"><div class="k">Réka</div><div class="v muted" style="font-size:15px;font-weight:500">${ICON.check.replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px;color:var(--good)"')} ${fmt(c.rekaPaid)} utalva</div><div class="s rk"><span>${mo.meta.rekaAt ? new Date(mo.meta.rekaAt).toLocaleDateString("hu-HU", { month: "short", day: "numeric" }) : ""}</span><button class="btn sm ghost" data-act="reka">Módosít</button></div></div>`}
+      ${(() => { const t = assetTotals(); return `<div class="kpi"><div class="k">Teljes vagyon</div><div class="v">${fmt(t.total)}</div><div class="s">Revolut ${fmt(t.revHuf, { noUnit: true })} + megtakarítás ${fmt(t.total - t.revHuf, { noUnit: true })}</div></div>`; })()}
+    </div>`;
+  // due list
+  const open = c.lines.filter(l => !isIncomeCat(l.cat) && remaining(l) > 0).sort((a,b) => (b.rev - a.rev) || dueSortKey(a) - dueSortKey(b) || a.name.localeCompare(b.name, "hu"));
+  const openSum = open.reduce((s, l) => s + remaining(l), 0);
+  h += `<div class="card"><div class="hd"><h2>Még fizetendő</h2><span class="muted small">${open.length} tétel · ${fmt(openSum)}</span></div>`;
+  h += open.length ? `<ul class="due">${open.map(l => `<li data-line="${l.kind}:${esc(l.id)}">
+      <span class="day ${dueClass(l, k)}">${l.due ? l.due + "." : "–"}</span>
+      <span class="nm">${esc(l.name)}<span class="sub">${l.rev ? '<span class="chip rev">Revolut</span> ' : '<span class="chip">Raiffeisen</span> '}${l.a ? "eddig " + fmt(l.a) + " / " + fmt(l.p) : ""}</span></span>
+      <span class="amt num">${fmt(remaining(l))}</span>
+      <button class="ok" data-act="pay" data-id="${l.kind}:${esc(l.id)}" title="Kifizetve, lezárás" aria-label="${esc(l.name)} kifizetve">${ICON.check}</button>
+    </li>`).join("")}</ul>` : `<div class="empty">Minden tétel rendezve ebben a hónapban.</div>`;
+  h += `</div>`;
+  h += debtCard();
+  if (!mo.meta.closed) h += `<div><button class="btn" data-act="mclose">Hónap lezárása…</button></div>`;
+  else h += `<div><button class="btn" data-act="mreopen">Hónap újranyitása</button></div>`;
+  h += `</div><div class="col"><div class="card">`;
+  // categories
+  for (const cat of catOrder()) {
+    const L = c.lines.filter(l => l.cat === cat.id && (S.showZero || l.p || l.a || cat.id === "eseti"));
+    const cc = c.cats[cat.id] || { p: 0, a: 0 };
+    if (!L.length && cat.id !== "eseti") continue;
+    const inc = cat.kind === "income";
+    const ratio = cc.p ? Math.min(cc.act / cc.p, 1) : (cc.act ? 1 : 0);
+    const isOpen = S.open[cat.id] ?? LS.get("open." + cat.id, true);
+    h += `<details class="cat" data-cat="${cat.id}" ${isOpen ? "open" : ""}><summary>
+        <span class="ic" aria-hidden="true">${cat.icon || ""}</span><span class="nm">${esc(cat.name)}</span>
+        <span class="sums num">${fmt(inc ? cc.a : cc.a)} <span class="t">/ ${fmt(cc.p, { noUnit: true })}</span></span>
+        <span class="meter"><i class="${!inc && cc.act > cc.p ? "over" : ""}" style="width:${(ratio * 100).toFixed(1)}%"></i></span>
+      </summary><div class="rows"><div class="rowhd"><span style="text-align:left">Tétel</span><span>Terv</span><span>Tény</span><span></span></div>`;
+    for (const l of L) {
+      const over = !inc && l.a != null && l.a > l.p;
+      h += `<div class="row ${l.done ? "done" : ""} ${!l.p && !l.a ? "zero" : ""}" data-line="${l.kind}:${esc(l.id)}" tabindex="0">
+        <span class="nm">${esc(l.name)}${l.due ? `<span class="sub">${l.due}.</span>` : ""}${l.lnote ? `<span class="sub">${esc(l.lnote)}</span>` : ""}</span>
+        <span class="p num">${fmt(l.p, { noUnit: true })}</span>
+        <span class="a num">${l.a == null ? "–" : fmt(l.a, { noUnit: true })}</span>
+        <span class="fl">${l.rev ? '<span class="chip rev" title="Revolutról megy">R</span>' : ""}${l.done ? `<span class="chip done" title="Lezárva">${ICON.check.replace('<svg', '<svg width="12" height="12"')}</span>` : over ? '<span class="chip over" title="Túllépés">!</span>' : ""}</span>
+      </div>`;
+    }
+    if (cat.id === "eseti") h += `<div class="addrow"><button class="btn sm" data-act="addextra">${ICON.plus} Eseti kiadás</button></div>`;
+    h += `</div></details>`;
+  }
+  h += `</div></div></div>`;
+  v.innerHTML = h;
+}
+$("#view-month").addEventListener("toggle", e => { const d = e.target.closest("details.cat"); if (d) { S.open[d.dataset.cat] = d.open; LS.set("open." + d.dataset.cat, d.open); } }, true);
+$("#view-month").addEventListener("click", e => {
+  const a = e.target.closest("[data-act]");
+  if (a) {
+    const act = a.dataset.act;
+    if (act === "zero") { S.showZero = a.checked; return renderMonth(); }
+    e.preventDefault();
+    if (act === "mprev") { S.mk = mkAdd(S.mk, -1); return renderMonth(); }
+    if (act === "mnext") { S.mk = mkAdd(S.mk, 1); return renderMonth(); }
+    if (act === "mtoday") { S.mk = currentMk(); return renderMonth(); }
+    if (act === "mcreate") { D().months[S.mk] = newMonthFrom(S.mk); persist(); renderAll(); return toast("Terv létrehozva."); }
+    if (act === "pay") { const [kind, id] = a.dataset.id.split(/:(.*)/s); return payLine(S.mk, kind, id); }
+    if (act === "addextra") return openExtraNew(S.mk);
+    if (act === "reka") return openReka(S.mk);
+    if (act === "px") return refreshPrices(false);
+    if (act === "debtadd") return openDebtEntry(a.dataset.id);
+    if (act === "mclose") return openClose(S.mk);
+    if (act === "mreopen") { const mo = month(S.mk); mo.meta = stamp({ ...mo.meta, closed: false }); persist(); return renderAll(); }
+    return;
+  }
+  const dr = e.target.closest("[data-debt]"); if (dr) return openDebtEntry(dr.dataset.debt);
+  const r = e.target.closest("[data-line]");
+  if (r) { const [kind, id] = r.dataset.line.split(/:(.*)/s); openLine(S.mk, kind, id); }
+});
+$("#view-month").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches(".row")) e.target.click(); });
+
+/* line editing */
+function getRaw(k, kind, id){ const mo = month(k); return kind === "extra" ? mo.extras[id] : mo.lines[id]; }
+function setLine(k, kind, id, patch){
+  const mo = month(k), box = kind === "extra" ? mo.extras : mo.lines;
+  const cur = box[id] || { p: 0 };
+  const n = { ...cur, ...patch };
+  for (const key of Object.keys(n)) if (n[key] === null || n[key] === undefined || n[key] === false || n[key] === "") delete n[key];
+  if (n.p == null) n.p = 0;
+  box[id] = stamp(n);
+  persist(); renderAll();
+}
+function payLine(k, kind, id){
+  const raw = getRaw(k, kind, id) || { p: 0 };
+  const before = JSON.stringify(raw);
+  const a = raw.a != null && raw.a > 0 ? raw.a : raw.p;
+  setLine(k, kind, id, { a, done: true });
+  const nm = kind === "extra" ? raw.name : (itemById(id) || {}).name;
+  toast(`${nm}: kifizetve, ${fmt(a)}`, () => { const mo = month(k), box = kind === "extra" ? mo.extras : mo.lines; box[id] = stamp(JSON.parse(before)); persist(); renderAll(); });
+}
+
+/* ================= drawer ================= */
+const DR = { open: false, refresh: null };
+function openDrawer(title, bodyFn, dynFn){
+  const d = $("#drawer");
+  DR.open = true;
+  d.innerHTML = `<div class="dh"><h3 id="drTitle">${title()}</h3><button class="icon-btn" data-dr="close" aria-label="Bezárás">${ICON.close}</button></div><div class="db">${bodyFn()}${dynFn ? `<div id="drDyn" style="display:grid;gap:14px">${dynFn()}</div>` : ""}</div>`;
+  // frissítéskor csak a számolt rész cserélődik, hogy a beviteli mezők (és a fókusz) megmaradjanak
+  DR.refresh = () => { if (dynFn) { const el = $("#drDyn"); if (el) el.innerHTML = dynFn(); } $("#drTitle").innerHTML = title(); };
+  d.classList.add("on"); $("#scrim").classList.add("on");
+  setTimeout(() => { const f = d.querySelector("[autofocus]"); if (f && matchMedia("(min-width:761px)").matches) f.focus(); }, 60);
+}
+function closeDrawer(){ DR.open = false; DR.refresh = null; DR.handler = null; $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); }
+$("#scrim").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && DR.open) closeDrawer(); });
+$("#drawer").addEventListener("click", e => { const b = e.target.closest("[data-dr]"); if (!b) return; if (b.dataset.dr === "close") return closeDrawer(); if (DR.handler) DR.handler(b.dataset.dr, b, e); });
+$("#drawer").addEventListener("change", e => { if (DR.handler && e.target.dataset.fk) DR.handler("change:" + e.target.dataset.fk, e.target, e); });
+$("#drawer").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input.inp")) { e.preventDefault(); if (e.target.dataset.fk === "add") { DR.handler && DR.handler("add", e.target, e); } else e.target.blur(); } });
+
+function lineView(k, kind, id){
+  const raw = getRaw(k, kind, id) || { p: 0 };
+  const it = kind === "item" ? itemById(id) : null;
+  const cat = catById(kind === "extra" ? (raw.cat || "eseti") : it.cat);
+  const inc = cat && cat.kind === "income";
+  const p = +raw.p || 0, a = raw.a == null ? null : +raw.a;
+  const rem = raw.done ? 0 : Math.max(p - (a || 0), 0);
+  let diff = "";
+  if (!inc) diff = raw.done ? (a != null && a !== p ? `Lezárva · eltérés a tervtől: <b class="${a > p ? "neg" : "pos"}">${fmt(a - p, { sign: true })}</b>` : "Lezárva.") : a != null && a > p ? `Túllépés: <b class="neg">${fmt(a - p)}</b>` : `Hátralévő: <b>${fmt(rem)}</b>${raw.rev ? " · a keretből levonva" : ""}`;
+  else diff = a == null ? "Tény nélkül a terv számít." : `Eltérés: <b>${fmt(a - p, { sign: true })}</b>`;
+  return `
+    ${kind === "extra" ? `<div class="field"><label for="dName">Megnevezés</label><input class="inp" id="dName" data-fk="name" value="${esc(raw.name || "")}" autocomplete="off"></div>` : ""}
+    <div class="muted small">${esc(cat ? cat.name : "")} · ${mkName(k)}${it && it.note ? " · " + esc(it.note) : ""}</div>
+    <div class="two">
+      <div class="field"><label for="dP">Terv</label><input class="inp num" id="dP" data-fk="p" inputmode="numeric" value="${p || ""}" placeholder="0" autocomplete="off"></div>
+      <div class="field"><label for="dA">Tény</label><input class="inp num" id="dA" data-fk="a" inputmode="numeric" value="${a == null ? "" : a}" placeholder="üres" autocomplete="off" autofocus></div>
+    </div>
+    <div class="field"><label for="dAdd">Hozzáadás a tényhez (pl. heti zsebpénz)</label>
+      <div class="addline"><input class="inp num" id="dAdd" data-fk="add" inputmode="numeric" placeholder="összeg" autocomplete="off"><button class="btn" data-dr="add">${ICON.plus} Hozzáad</button></div></div>
+    ${inc ? "" : `<label class="toggle"><input type="checkbox" data-fk="rev" ${raw.rev ? "checked" : ""}> Revolutról megy <span class="muted small">(beleszámít a keretbe)</span></label>
+    <label class="toggle"><input type="checkbox" data-fk="done" ${raw.done ? "checked" : ""}> Lezárva <span class="muted small">(nem von le többet)</span></label>`}
+    <div class="field"><label for="dNote">Megjegyzés ehhez a hónaphoz</label><input class="inp" id="dNote" data-fk="note" value="${esc(raw.note || "")}" autocomplete="off"></div>`;
+}
+function lineDyn(k, kind, id){
+  const raw = getRaw(k, kind, id) || { p: 0 };
+  const it = kind === "item" ? itemById(id) : null;
+  const cat = catById(kind === "extra" ? (raw.cat || "eseti") : it.cat);
+  const inc = cat && cat.kind === "income";
+  const p = +raw.p || 0, a = raw.a == null ? null : +raw.a;
+  const rem = raw.done ? 0 : Math.max(p - (a || 0), 0);
+  let diff = "";
+  if (!inc) diff = raw.done ? (a != null && a !== p ? `Lezárva · eltérés a tervtől: <b class="${a > p ? "neg" : "pos"}">${fmt(a - p, { sign: true })}</b>` : "Lezárva.") : a != null && a > p ? `Túllépés: <b class="neg">${fmt(a - p)}</b>` : `Hátralévő: <b>${fmt(rem)}</b>${raw.rev ? " · a keretből levonva" : ""}`;
+  else diff = a == null ? "Tény nélkül a terv számít." : `Eltérés: <b>${fmt(a - p, { sign: true })}</b>`;
+  return `<div class="diffline">${diff}</div>
+    <div class="actions">
+      ${!inc && !raw.done ? `<button class="btn primary" data-dr="pay">${ICON.check} Kifizetve${a ? " (" + fmt(a) + ")" : " a terv szerint"}</button>` : ""}
+      ${kind === "extra" ? `<button class="btn" data-dr="del">${ICON.trash} Törlés</button>` : ""}
+    </div>`;
+}
+function openLine(k, kind, id){
+  const nm = () => { const raw = getRaw(k, kind, id); return esc(kind === "extra" ? (raw && raw.name) || "Eseti tétel" : itemById(id).name); };
+  openDrawer(nm, () => lineView(k, kind, id), () => lineDyn(k, kind, id));
+  DR.handler = (what, el) => {
+    const raw = getRaw(k, kind, id) || { p: 0 };
+    if (what === "change:p" || what === "change:a") {
+      const v = parseAmt(el.value); if (Number.isNaN(v)) { toast("Nem értelmezhető összeg."); el.value = what === "change:p" ? (raw.p || "") : (raw.a ?? ""); return; }
+      setLine(k, kind, id, what === "change:p" ? { p: v || 0 } : { a: v });
+    }
+    else if (what === "add") {
+      const inp = $("#dAdd"), v = parseAmt(inp.value); if (!v) return;
+      const na = (raw.a || 0) + v; setLine(k, kind, id, { a: na }); toast(`Hozzáadva: ${fmt(v)}`);
+      $("#dA").value = na; inp.value = ""; inp.focus();
+    }
+    else if (what === "change:rev") setLine(k, kind, id, { rev: el.checked });
+    else if (what === "change:done") setLine(k, kind, id, { done: el.checked });
+    else if (what === "change:note") setLine(k, kind, id, { note: el.value.trim() });
+    else if (what === "change:name") setLine(k, kind, id, { name: el.value.trim() || "Eseti tétel" });
+    else if (what === "pay") { payLine(k, kind, id); closeDrawer(); }
+    else if (what === "del") {
+      const mo = month(k), before = mo.extras[id];
+      delete mo.extras[id]; D().deleted[`months/${k}/extras/${id}`] = nowIso(); persist(); closeDrawer(); renderAll();
+      toast("Törölve.", () => { mo.extras[id] = stamp({ ...before }); delete D().deleted[`months/${k}/extras/${id}`]; persist(); renderAll(); });
+    }
+  };
+}
+function openExtraNew(k){
+  const id = uid("x"); month(k).extras[id] = stamp({ name: "", p: 0, rev: true });
+  persist(); renderAll(); openLine(k, "extra", id);
+  setTimeout(() => { const n = $("#dName"); if (n) n.focus(); }, 80);
+}
+function openReka(k){
+  openDrawer(() => "Utalás Rékának", () => { const c = calc(k), mo = month(k); return `
+    <div class="muted small">${mkName(k)} · a tervezett havi egyenleg (${fmt(c.bal.p)}) ${D().settings.rekaPct}%-a, ${D().settings.rekaMode === "round" ? "a legközelebbi" : "felfelé kerekítve a következő"} ${fmt(D().settings.rekaRound)}-re.</div>
+    <div class="kpi" style="padding:0"><div class="k">Számított összeg</div><div class="v">${fmt(c.reka)}</div></div>
+    <div class="field"><label for="dRk">Ténylegesen utalt összeg</label><input class="inp num" id="dRk" data-fk="paid" inputmode="numeric" value="${mo.meta.rekaPaid ?? ""}" placeholder="${c.reka}" autocomplete="off" autofocus></div>
+    <div class="actions"><button class="btn primary" data-dr="exact">${ICON.check} Utalva: ${fmt(c.reka)}</button>${mo.meta.rekaPaid != null ? `<button class="btn" data-dr="clear">Nincs utalva</button>` : ""}</div>`; });
+  DR.handler = (what, el) => {
+    const mo = month(k), c = calc(k);
+    if (what === "exact") { mo.meta = stamp({ ...mo.meta, rekaPaid: c.reka, rekaAt: nowIso() }); persist(); closeDrawer(); renderAll(); }
+    if (what === "clear") { const m = { ...mo.meta }; delete m.rekaPaid; mo.meta = stamp(m); persist(); closeDrawer(); renderAll(); }
+    if (what === "change:paid") { const v = parseAmt(el.value); const m = { ...mo.meta }; if (v == null || Number.isNaN(v)) delete m.rekaPaid; else { m.rekaPaid = v; m.rekaAt = m.rekaAt || nowIso(); } mo.meta = stamp(m); persist(); renderAll(); }
+  };
+}
+function openClose(k){
+  const c = calc(k), nk = mkAdd(k, 1);
+  const openN = c.lines.filter(l => !isIncomeCat(l.cat) && !l.done && l.p > 0).length;
+  openDrawer(() => "Hónap lezárása", () => `
+    <p class="muted small" style="margin:0">${mkName(k)}. A lezárt hónap archív lesz, de bármikor újranyitható.${openN ? ` <b>${openN} tétel nincs lezárva,</b> ezeknél a terv marad érvényben.` : ""}${month(nk) ? "" : ` A(z) ${mkName(nk).toLowerCase()}i terv a tételekből elkészül.`}</p>
+    <div class="actions"><button class="btn primary" data-dr="ok">${ICON.check} Lezárás</button></div>`);
+  DR.handler = (what) => {
+    if (what !== "ok") return;
+    withUndo(`${mkName(k)} lezárva.`, () => {
+      const mo = month(k); mo.meta = stamp({ ...mo.meta, closed: true });
+      if (!month(nk)) D().months[nk] = newMonthFrom(nk);
+      S.mk = nk;
+    });
+    closeDrawer();
+  };
+}
+
+/* shared change handler for inline inputs */
+document.addEventListener("change", e => {
+  const el = e.target, f = el.dataset && el.dataset.f; if (!f) return;
+  const parts = f.split("|");
+  const numv = () => { const v = parseAmt(el.value); if (Number.isNaN(v)) { toast("Nem értelmezhető szám."); return undefined; } return v; };
+  if (f === "rev-bal") { const v = numv(); if (v === undefined) return; const mo = month(S.mk); const m = { ...mo.meta }; if (v == null) { delete m.revolut; delete m.revAt; } else { m.revolut = v; m.revAt = nowIso(); } mo.meta = stamp(m); persist(); return renderAll(); }
+  const A = D().assets;
+  if (parts[0] === "acct") { const v = numv(); if (v === undefined) return; const a = A.accounts[parts[1]]; a.bal = { ...a.bal, [parts[2]]: v }; stamp(a); persist(); return renderAll(); }
+  if (parts[0] === "stock" || parts[0] === "crypto" || parts[0] === "debt") {
+    const g = { stock: "stocks", crypto: "crypto", debt: "debts" }[parts[0]], o = A[g][parts[1]], fld = parts[2];
+    if (["qty","start"].includes(fld)) { const v = numv(); if (v === undefined) return; o[fld] = v; if (fld === "start") o.baseAt = nowIso(); }
+    else if (fld === "from") { o.from = el.value; o.baseAt = nowIso(); }
+    else if (fld === "usd") { const v = numv(); if (v === undefined) return; if (v == null) { o.manual = false; } else { o.usd = v; o.manual = true; } }
+    else o[fld] = el.value.trim();
+    stamp(o); persist(); return renderAll();
+  }
+  if (parts[0] === "item") {
+    const it = itemById(parts[1]), fld = parts[2];
+    if (fld === "name") it.name = el.value.trim() || it.name;
+    else if (fld === "due") { const v = parseInt(el.value, 10); if (v >= 1 && v <= 31) it.due = v; else delete it.due; }
+    else if (fld === "plan") { const v = numv(); if (v === undefined) return; if (v == null) delete it.plan; else it.plan = v; }
+    else if (fld === "rule") { delete it.rule; delete it.months; if (el.value === "week") it.rule = { perMonday: it.plan || 0 }; if (el.value === "year") it.months = [1]; }
+    else if (fld === "param") { const v = numv(); if (v === undefined) return; if (it.rule) it.rule = { perMonday: v || 0 }; else if (it.months) it.months = [Math.min(Math.max(v || 1, 1), 12)]; }
+    else if (fld === "rev") { if (el.checked) it.rev = true; else delete it.rev; }
+    else if (fld === "off") { if (!el.checked) it.off = true; else delete it.off; }
+    else if (fld === "cat") it.cat = el.value;
+    stamp(it); persist(); return renderAll();
+  }
+  if (parts[0] === "set") {
+    const st = D().settings, fld = parts[1];
+    if (["rekaPct","rekaRound","startDay","fxUSD","fxEUR"].includes(fld)) { const v = numv(); if (v === undefined) return; if (v == null) delete st[fld]; else st[fld] = v; }
+    else st[fld] = el.value.trim();
+    stamp(st); persist(); return renderAll();
+  }
+});
+
+/* ================= charts (inline SVG) ================= */
+const SERIES = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function niceStep(max){ const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw || 1))); for (const m of [1, 2, 2.5, 5, 10]) if (raw <= m * p) return m * p; return 10 * p; }
+const kFmt = v => v >= 1e6 ? (v / 1e6).toLocaleString("hu-HU", { maximumFractionDigits: 1 }) + " M" : Math.round(v / 1000) + " e";
+function stackedBars(el, cols, series, opt){
+  // cols: [{key,label,cur,values:{sid:v}}], series: [{id,name,color}]
+  const W = 720, H = 250, ml = 44, mr = 6, mt = 10, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
+  const tot = c => series.reduce((s, x) => s + Math.max(c.values[x.id] || 0, 0), 0);
+  const max = Math.max(1, ...cols.map(tot)), step = niceStep(max), top = Math.ceil(max / step) * step;
+  const bw = iw / cols.length, bar = Math.min(38, bw * 0.62);
+  const y = v => mt + ih - v / top * ih;
+  let g = "";
+  for (let v = 0; v <= top + 1; v += step) g += `<line class="gl" x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ml - 6}" y="${y(v) + 4}" text-anchor="end">${v ? kFmt(v) : "0"}</text>`;
+  let bars = "", defs = "";
+  cols.forEach((c, i) => {
+    const x = ml + i * bw + (bw - bar) / 2, t = tot(c);
+    if (t > 0) {
+      defs += `<clipPath id="cp${opt.id}${i}"><rect x="${x}" y="${y(t)}" width="${bar}" height="${ih - (y(t) - mt) + 6}" rx="4"/></clipPath>`;
+      let acc = 0, seg = "";
+      for (const s of series) { const v = Math.max(c.values[s.id] || 0, 0); if (!v) continue; const y1 = y(acc + v), y0 = y(acc); seg += `<rect x="${x}" y="${y1}" width="${bar}" height="${Math.max(y0 - y1, 0)}" fill="${s.color}" stroke="var(--surface)" stroke-width="2" paint-order="stroke"/>`; acc += v; }
+      bars += `<g clip-path="url(#cp${opt.id}${i})">${seg}</g>`;
+    }
+    bars += `<text class="ax" x="${ml + i * bw + bw / 2}" y="${H - 8}" text-anchor="middle" ${c.cur ? 'style="font-weight:600;fill:var(--ink)"' : ""}>${esc(c.label)}</text>`;
+    bars += `<rect class="hit" data-i="${i}" x="${ml + i * bw}" y="${mt}" width="${bw}" height="${ih}"/>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}"><defs>${defs}</defs>${g}<line x1="${ml}" x2="${W - mr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>${bars}</svg><div class="tip"></div>`;
+  const tip = el.querySelector(".tip"), svg = el.querySelector("svg");
+  svg.addEventListener("pointermove", e => {
+    const h = e.target.closest(".hit"); if (!h) return tip.classList.remove("on");
+    const c = cols[+h.dataset.i];
+    tip.innerHTML = `<div class="h">${esc(c.full || c.label)}</div>` + series.filter(s => c.values[s.id]).slice().reverse().map(s => `<div class="r"><span><i style="background:${s.color}"></i>${esc(s.name)}</span><span class="num">${fmt(c.values[s.id])}</span></div>`).join("") + `<div class="r tot"><span>Összesen</span><span class="num">${fmt(tot(c))}</span></div>`;
+    const box = el.getBoundingClientRect(), hb = h.getBoundingClientRect();
+    let lx = hb.left - box.left + hb.width / 2 + 12; if (lx + 190 > box.width) lx = hb.left - box.left + hb.width / 2 - 200;
+    tip.style.left = Math.max(0, lx) + "px"; tip.style.top = "8px"; tip.classList.add("on");
+  });
+  svg.addEventListener("pointerleave", () => tip.classList.remove("on"));
+}
+function lineChart(el, pts, opt){
+  const W = 720, H = 200, ml = 50, mr = 10, mt = 12, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
+  const vals = pts.map(p => p.v), lo0 = Math.min(...vals), hi0 = Math.max(...vals);
+  const step = niceStep((hi0 - lo0) || hi0 || 1), lo = Math.floor(lo0 / step) * step, hi = Math.ceil(hi0 / step) * step || step;
+  const x = i => ml + (pts.length === 1 ? iw / 2 : i / (pts.length - 1) * iw), y = v => mt + ih - (v - lo) / ((hi - lo) || 1) * ih;
+  let g = ""; for (let v = lo; v <= hi + 1; v += step) g += `<line class="gl" x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ml - 6}" y="${y(v) + 4}" text-anchor="end">${kFmt(v)}</text>`;
+  const path = pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.v).toFixed(1)).join(" ");
+  const dots = pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.v)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><text class="ax" x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(p.label)}</text><rect class="hit" data-i="${i}" x="${x(i) - iw / pts.length / 2}" y="${mt}" width="${iw / pts.length}" height="${ih}"/>`).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">${g}<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg><div class="tip"></div>`;
+  const tip = el.querySelector(".tip"), svg = el.querySelector("svg");
+  svg.addEventListener("pointermove", e => { const h = e.target.closest(".hit"); if (!h) return tip.classList.remove("on"); const p = pts[+h.dataset.i];
+    tip.innerHTML = `<div class="h">${esc(p.full || p.label)}</div>${p.rows.map(r => `<div class="r"><span>${esc(r[0])}</span><span class="num">${fmt(r[1])}</span></div>`).join("")}`;
+    const box = el.getBoundingClientRect(), hb = h.getBoundingClientRect(); let lx = hb.left - box.left + hb.width / 2 + 12; if (lx + 190 > box.width) lx = hb.left - box.left + hb.width / 2 - 200;
+    tip.style.left = Math.max(0, lx) + "px"; tip.style.top = "8px"; tip.classList.add("on"); });
+  svg.addEventListener("pointerleave", () => tip.classList.remove("on"));
+}
+
+/* ================= year view ================= */
+function renderYear(){
+  const v = $("#view-year"), keys = monthKeys(), cur = currentMk(), mode = S.yearMode;
+  if (!keys.length) { v.innerHTML = `<div class="mhead"><h1>Éves áttekintés</h1></div><p class="muted">Még nincs hónap. Hozz létre egyet a Hónap fülön.</p>`; return; }
+  const rows = keys.map(k => ({ k, c: calc(k) }));
+  const val = (o) => mode === "p" ? o.p : o.a;
+  const tot = { inc: 0, exp: 0, bal: 0, reka: 0 };
+  let h = `<div class="mhead"><h1>Éves áttekintés</h1><span class="per">${mkName(keys[0])} – ${mkName(keys[keys.length - 1])}</span><span class="spacer"></span>
+    <div class="seg" role="group" aria-label="Nézet"><button data-act="ym" data-v="a" aria-pressed="${mode === "a"}">Tény / várható</button><button data-act="ym" data-v="p" aria-pressed="${mode === "p"}">Terv</button></div></div>`;
+  const ecats = D().cats.filter(c => c.kind !== "income");
+  const series = ecats.map((c, i) => ({ id: c.id, name: c.name, color: cssVar(SERIES[i % SERIES.length]) }));
+  h += `<div class="grid"><div class="card"><div class="hd"><h2>Kiadások kategóriánként</h2><span class="muted small">${mode === "p" ? "terv" : "tény, a nyitott tételeknél a terv"}</span></div><div class="bd"><div class="chart" id="yChart"></div></div>
+    <div class="legend">${series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div></div>`;
+  h += `<div class="card"><div class="hd"><h2>Havi összesítő</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Hónap</th><th>Bevétel</th><th>Kiadás</th><th>Egyenleg</th><th>Réka</th><th>Keret</th></tr></thead><tbody>`;
+  for (const { k, c } of rows) {
+    tot.inc += val(c.inc); tot.exp += val(c.exp); tot.bal += val(c.bal); tot.reka += mode === "p" ? c.reka : (c.rekaPaid ?? c.reka);
+    h += `<tr class="${k === cur ? "cur" : ""}"><td><a href="#" data-act="gomonth" data-k="${k}">${mkName(k)}</a>${month(k).meta.closed ? ' <span class="chip">lezárva</span>' : ""}</td>
+      <td class="num">${fmt(val(c.inc), { noUnit: true })}</td><td class="num">${fmt(val(c.exp), { noUnit: true })}</td>
+      <td class="num ${val(c.bal) < 0 ? "neg" : ""}">${fmt(val(c.bal), { noUnit: true })}</td><td class="num">${fmt(mode === "p" ? c.reka : (c.rekaPaid ?? c.reka), { noUnit: true })}</td>
+      <td class="num">${c.keret == null ? "–" : fmt(c.keret, { noUnit: true })}</td></tr>`;
+  }
+  h += `</tbody><tfoot><tr><td>Összesen</td><td class="num">${fmt(tot.inc, { noUnit: true })}</td><td class="num">${fmt(tot.exp, { noUnit: true })}</td><td class="num">${fmt(tot.bal, { noUnit: true })}</td><td class="num">${fmt(tot.reka, { noUnit: true })}</td><td></td></tr></tfoot></table></div></div>`;
+  // matrix
+  const mm = S.matrix;
+  h += `<div class="card"><div class="hd"><h2>Tételek havonta</h2><span class="spacer" style="flex:1"></span>
+    <div class="seg"><button data-act="mx" data-v="p" aria-pressed="${mm === "p"}">Terv</button><button data-act="mx" data-v="a" aria-pressed="${mm === "a"}">Tény</button></div>
+    <button class="btn sm" data-act="csv">CSV</button></div>
+    <div class="bd muted small" style="padding-bottom:8px">Kattints egy cellára a szerkesztéshez. A ${mm === "p" ? "terv" : "tény"} értékét írod át.</div>
+    <div class="tblwrap" style="max-height:70vh"><table class="t" id="mxT"><thead><tr><th>Tétel</th>${keys.map(k => `<th>${mkShort(k)}</th>`).join("")}<th>Össz.</th></tr></thead><tbody>`;
+  for (const cat of catOrder()) {
+    const its = items().filter(i => i.cat === cat.id && (!i.off || keys.some(k => month(k).lines[i.id])));
+    h += `<tr class="sec"><td>${cat.icon || ""} ${esc(cat.name)}</td>${keys.map(k => { const cc = calc(k).cats[cat.id] || { p: 0, act: 0 }; return `<td class="num">${fmt(mm === "p" ? cc.p : cc.act, { noUnit: true })}</td>`; }).join("")}<td></td></tr>`;
+    for (const it of its) {
+      let sum = 0;
+      h += `<tr><td>${esc(it.name)}</td>${keys.map(k => { const ln = month(k).lines[it.id]; const x = ln ? (mm === "p" ? ln.p : ln.a) : null; sum += +x || 0;
+        return `<td class="num ed ${mm === "p" ? "pl" : "act"}" data-cell="${k}|${it.id}">${x == null || x === "" ? "" : fmt(x, { noUnit: true })}</td>`; }).join("")}<td class="num">${fmt(sum, { noUnit: true })}</td></tr>`;
+    }
+    if (cat.id === "eseti") h += `<tr><td class="muted">Eseti tételek</td>${keys.map(k => { const s = Object.values(month(k).extras).reduce((a, e) => a + (+(mm === "p" ? e.p : e.a) || 0), 0); return `<td class="num">${s ? fmt(s, { noUnit: true }) : ""}</td>`; }).join("")}<td></td></tr>`;
+  }
+  h += `</tbody></table></div></div></div>`;
+  v.innerHTML = h;
+  stackedBars($("#yChart"), rows.map(({ k, c }) => ({ label: mkShort(k), full: mkName(k), cur: k === cur,
+    values: Object.fromEntries(ecats.map(ec => [ec.id, mode === "p" ? (c.cats[ec.id] || {}).p : (c.cats[ec.id] || {}).a])) })), series, { id: "y", label: "Havi kiadások kategóriánként" });
+}
+$("#view-year").addEventListener("click", e => {
+  const a = e.target.closest("[data-act]");
+  if (a) {
+    e.preventDefault();
+    if (a.dataset.act === "ym") { S.yearMode = a.dataset.v; return renderYear(); }
+    if (a.dataset.act === "mx") { S.matrix = a.dataset.v; return renderYear(); }
+    if (a.dataset.act === "gomonth") { S.mk = a.dataset.k; return setTab("month"); }
+    if (a.dataset.act === "csv") return exportCsv();
+  }
+  const td = e.target.closest("td[data-cell]");
+  if (td && !td.querySelector("input")) {
+    const [k, id] = td.dataset.cell.split("|"), ln = month(k).lines[id] || { p: 0 }, fld = S.matrix;
+    td.innerHTML = `<input value="${ln[fld] ?? ""}" inputmode="numeric" aria-label="${esc(itemById(id).name)} ${mkName(k)}">`;
+    const inp = td.querySelector("input"); inp.focus(); inp.select();
+    const done = save => { if (!inp.isConnected) return; if (save) { const v = parseAmt(inp.value); if (!Number.isNaN(v)) {
+          const mo = month(k), cur = mo.lines[id] || { p: 0 }, n = { ...cur };
+          if (fld === "p") n.p = v || 0; else if (v == null) delete n.a; else n.a = v;
+          mo.lines[id] = stamp(n); persist(); } }
+        renderYear(); };
+    inp.addEventListener("keydown", ev => { if (ev.key === "Enter") done(true); if (ev.key === "Escape") done(false);
+      if (ev.key === "Tab") { ev.preventDefault(); const nxt = ev.shiftKey ? td.previousElementSibling : td.nextElementSibling; done(true); if (nxt && nxt.dataset.cell) setTimeout(() => { const n = document.querySelector(`td[data-cell="${nxt.dataset.cell}"]`); if (n) n.click(); }, 0); } });
+    inp.addEventListener("blur", () => done(true));
+  }
+});
+function exportCsv(){
+  const keys = monthKeys(), sep = ";", q = s => `"${String(s).replace(/"/g, '""')}"`;
+  const lines = [["Kategória","Tétel", ...keys.flatMap(k => [mkName(k) + " terv", mkName(k) + " tény"])].map(q).join(sep)];
+  for (const it of items()) lines.push([q(catById(it.cat).name), q(it.name), ...keys.flatMap(k => { const l = month(k).lines[it.id]; return [l ? l.p : "", l && l.a != null ? l.a : ""]; })].join(sep));
+  for (const k of keys) for (const e of Object.values(month(k).extras)) lines.push([q("Eseti"), q(e.name + " (" + mkName(k) + ")"), ...keys.flatMap(k2 => k2 === k ? [e.p, e.a ?? ""] : ["", ""])].join(sep));
+  download(`budget-${today()}.csv`, "﻿" + lines.join("\r\n"), "text/csv");
+}
+
+/* ================= assets ================= */
+function renderAssets(){
+  const v = $("#view-assets"), A = D().assets, t = assetTotals(), px = A.px || {};
+  const usd = fx("USD"), eur = fx("EUR");
+  const parts = [["Raiffeisen", t.raif], ["Revolut", t.rev], ["Részvény", t.stock, t.stockUsd], ["Kripto", t.crypto, t.cryptoUsd]];
+  const pcol = ["--s1","--s2","--s3","--s4"].map(cssVar);
+  let h = `<div class="mhead"><h1>Vagyon</h1><span class="per">1 USD = ${fmtN(usd, 2)} Ft · 1 EUR = ${fmtN(eur, 2)} Ft${px.at ? " · frissítve " + new Date(px.at).toLocaleString("hu-HU", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}</span><span class="spacer"></span>
+    <button class="btn sm" data-act="px">${ICON.refresh} Árfolyamok frissítése</button></div>`;
+  h += `<div class="grid"><div class="card"><div class="hd"><h2>Összesítés</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="snap">Pillanatkép: ${mkName(currentMk())}</button></div><div class="bd">
+    <div class="compo" role="img" aria-label="Vagyon megoszlása">${parts.filter(p => p[1] > 0).map((p, i) => `<i style="flex:${p[1]};background:${pcol[parts.indexOf(p)]}" title="${p[0]}: ${fmt(p[1])}"></i>`).join("")}</div>
+    <div class="totals">${parts.map((p, i) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${pcol[i]};margin-right:8px"></i>${p[0]}</span><span class="num">${p[2] != null ? `<span class="muted">$${fmtN(p[2], 0)} · </span>` : ""}${fmt(p[1])}</span>`).join("")}
+      <span class="muted">ebből forint / euró / dollár készpénz</span><span class="num muted">${fmt(t.HUF, { noUnit: true })} / ${fmt(t.EUR, { noUnit: true })} / ${fmt(t.USD, { noUnit: true })}</span>
+      <span>Összes vagyon</span><span class="num">${fmt(t.total)}</span>
+      <span>Tartozások</span><span class="num neg">−${fmt(t.debts)}</span>
+      <span class="big">Nettó vagyon</span><span class="num big">${fmt(t.net)}</span></div>
+    <div class="chart" id="nwChart" style="margin-top:14px"></div></div></div>`;
+  h += `<div class="agrid">`;
+  for (const [id, a] of Object.entries(A.accounts)) {
+    h += `<div class="card acct"><div class="hd"><h2>${esc(a.name)}</h2></div><div class="bd"><div class="lines">`;
+    for (const cur of ["HUF","EUR","USD"]) {
+      if (id === "rev" && cur === "HUF") { h += `<span class="cur">HUF</span><span class="num" style="text-align:right;padding-right:11px">${fmt(t.revHuf, { noUnit: true })}</span><span class="eq">a főlapról</span>`; continue; }
+      h += `<span class="cur">${cur}</span><input class="inp num" inputmode="decimal" data-f="acct|${id}|${cur}" value="${a.bal[cur] ?? ""}" placeholder="0" aria-label="${esc(a.name)} ${cur}"><span class="eq num">${cur === "HUF" ? "" : fmt((+a.bal[cur] || 0) * fx(cur))}</span>`;
+    }
+    h += `</div><div class="sum"><span>Összesen</span><span class="num">${fmt(t[id])}</span></div></div></div>`;
+  }
+  // stocks
+  h += `<div class="card"><div class="hd"><h2>Részvények</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="addstock">${ICON.plus}</button></div><div class="tblwrap"><table class="t"><thead><tr><th>Jel</th><th>Darab</th><th>Ár (USD)</th><th>Érték (USD)</th><th>Érték (Ft)</th><th></th></tr></thead><tbody>`;
+  for (const [id, s] of Object.entries(A.stocks)) { const p = stockPrice(s); h += `<tr><td><input class="inp" style="width:80px" data-f="stock|${id}|sym" value="${esc(s.sym)}"></td><td><input class="inp num" style="width:80px" inputmode="decimal" data-f="stock|${id}|qty" value="${s.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="stock|${id}|usd" value="${p || ""}" title="${s.manual ? "kézi ár" : "élő / utolsó ár"}"></td><td class="num">$${fmtN((+s.qty || 0) * p, 2)}</td><td class="num">${fmt((+s.qty || 0) * p * usd)}</td><td><button class="icon-btn" data-act="del" data-g="stocks" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
+  h += `</tbody></table></div><div class="bd muted small" style="padding-top:8px">${D().settings.avKey ? "Napi záróár: Alpha Vantage" + (D().assets.px && D().assets.px.stockDate ? " (" + D().assets.px.stockDate + ")" : "") + "." : "Élő árhoz adj meg ingyenes Alpha Vantage-kulcsot a Beállításokban; addig az itt beírt ár számít."}</div></div>`;
+  // crypto
+  h += `<div class="card"><div class="hd"><h2>Kripto</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="addcrypto">${ICON.plus}</button></div><div class="tblwrap"><table class="t"><thead><tr><th>Jel</th><th>Mennyiség</th><th>Ár (USD)</th><th>Érték (USD)</th><th>Érték (Ft)</th><th></th></tr></thead><tbody>`;
+  let ct = 0;
+  for (const [id, c] of Object.entries(A.crypto)) { const p = cryptoPrice(c), val = (+c.qty || 0) * p * usd; ct += val;
+    h += `<tr><td><input class="inp" style="width:78px" data-f="crypto|${id}|sym" value="${esc(c.sym)}" title="CoinGecko: ${esc(c.cg || "")}"></td><td><input class="inp num" style="width:120px" inputmode="decimal" data-f="crypto|${id}|qty" value="${c.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="crypto|${id}|usd" value="${p ? +p.toPrecision(6) : ""}" title="${c.manual ? "kézi ár" : "CoinGecko"}"></td><td class="num">$${fmtN((+c.qty || 0) * p, 2)}</td><td class="num">${fmt(val)}</td><td><button class="icon-btn" data-act="cg" data-id="${id}" title="CoinGecko-azonosító">id</button><button class="icon-btn" data-act="del" data-g="crypto" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
+  h += `</tbody><tfoot><tr><td>Összesen</td><td></td><td></td><td class="num">$${fmtN(t.cryptoUsd, 2)}</td><td class="num">${fmt(ct)}</td><td></td></tr></tfoot></table></div></div>`;
+  // debts
+  h += `<div class="card"><div class="hd"><h2>Tartozások</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Név</th><th>Egyenleg</th><th>E hónap törlesztése után</th><th>Hátralévő</th><th>Vége</th><th></th></tr></thead><tbody>`;
+  for (const [id, d] of Object.entries(A.debts)) { const f = debtForecast(d), pp = debtParts(d);
+    h += `<tr><td>${esc(d.name)}</td><td><input class="inp num" style="width:110px" inputmode="numeric" data-f="debt|${id}|start" value="${d.start ?? ""}"></td><td><select class="inp" style="width:150px" data-f="debt|${id}|from">${monthKeys().map(k => `<option value="${k}" ${k === d.from ? "selected" : ""}>${mkName(k)}</option>`).join("")}</select></td><td class="num" title="törlesztve ${fmt(pp.paid + pp.extra)} · költés ${fmt(pp.charge)} · díj ${fmt(pp.fee)}">${fmt(f.rem)}</td><td>${f.end ? mkShort(f.end) : f.rem ? "eseti" : "–"}</td><td><button class="btn sm" data-act="debtadd" data-id="${id}">${ICON.plus}</button></td></tr>`; }
+  h += `</tbody></table></div><div class="bd muted small" style="padding-top:8px">Az egyenleget a kiválasztott hónap törlesztése utáni állapottal írd be. Onnantól a havi törlesztő sorok és az eseti törlesztések csökkentik, a kártyás költés és a díj növeli.</div></div>`;
+  h += `</div></div>`;
+  v.innerHTML = h;
+  const snaps = Object.entries(A.snaps).sort(([a], [b]) => a < b ? -1 : 1);
+  if (snaps.length >= 2) lineChart($("#nwChart"), snaps.map(([k, s]) => ({ label: mkShort(k), full: mkName(k), v: s.net, rows: [["Nettó vagyon", s.net], ["Összes vagyon", s.total], ["Kripto", s.crypto], ["Részvény", s.stock]] })), { label: "Nettó vagyon alakulása" });
+  else $("#nwChart").innerHTML = `<p class="muted small" style="margin:0">A nettó vagyon görbéje két havi pillanatkép után jelenik meg.</p>`;
+}
+$("#view-assets").addEventListener("click", e => {
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const A = D().assets, act = a.dataset.act;
+  if (act === "px") return refreshPrices(false);
+  if (act === "debtadd") return openDebtEntry(a.dataset.id);
+  if (act === "snap") { const t = assetTotals(), k = currentMk(); A.snaps[k] = stamp({ total: Math.round(t.total), net: Math.round(t.net), crypto: Math.round(t.crypto), stock: Math.round(t.stock), cash: Math.round(t.HUF + t.EUR + t.USD), raif: Math.round(t.raif), rev: Math.round(t.rev), debts: Math.round(t.debts), usd: fx("USD"), eur: fx("EUR") }); persist(); renderAssets(); return toast("Pillanatkép rögzítve: " + mkName(k)); }
+  if (act === "addstock") { const id = uid("s"); A.stocks[id] = stamp({ sym: "", qty: 0 }); persist(); return renderAssets(); }
+  if (act === "addcrypto") { const id = uid("c"); A.crypto[id] = stamp({ sym: "", qty: 0, cg: "" }); persist(); return renderAssets(); }
+  if (act === "cg") { const c = A.crypto[a.dataset.id]; const v = prompt("CoinGecko-azonosító (pl. bitcoin, solana, bittensor):", c.cg || ""); if (v != null) { c.cg = v.trim().toLowerCase(); c.manual = false; stamp(c); persist(); refreshPrices(true); } return; }
+  if (act === "del") { const g = a.dataset.g, id = a.dataset.id, before = A[g][id]; delete A[g][id]; D().deleted[`assets/${g}/${id}`] = nowIso(); persist(); renderAssets();
+    return toast("Törölve.", () => { A[g][id] = stamp({ ...before }); delete D().deleted[`assets/${g}/${id}`]; persist(); renderAssets(); }); }
+});
+
+/* ================= items (template) ================= */
+function renderItems(){
+  const v = $("#view-items"), cur = currentMk();
+  let h = `<div class="mhead"><h1>Tételek</h1><span class="per">Az új hónapok terve ebből és az előző hónapból készül.</span></div>
+    <div class="banner">Az <b>Alapterv</b> az éves tételeknél és az új tételeknél számít; a többinél az előző hónap terve öröklődik. A ${ICON.push.replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px"')} gomb az alaptervet (heti szabálynál a hétfők számával szorozva) beírja a folyó hónap (${mkName(cur)}) és minden későbbi, le nem zárt hónap tervébe.</div><div class="grid">`;
+  for (const cat of catOrder()) {
+    const its = items().filter(i => i.cat === cat.id);
+    h += `<div class="card"><div class="hd"><h2>${cat.icon || ""} ${esc(cat.name)}</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="additem" data-cat="${cat.id}">${ICON.plus} Új tétel</button></div>
+      <div class="irow ih"><span>Név</span><span>Nap</span><span>Alapterv</span><span>Szabály</span><span>Érték</span><span title="Revolutról megy">R</span><span title="Aktív">Akt.</span><span></span></div>`;
+    for (const it of its) {
+      const rule = it.rule ? "week" : it.months ? "year" : "";
+      h += `<div class="irow ${it.off ? "off" : ""}">
+        <input class="inp" data-f="item|${it.id}|name" value="${esc(it.name)}" aria-label="Név">
+        <input class="inp num" data-f="item|${it.id}|due" value="${it.due || ""}" inputmode="numeric" placeholder="nap" aria-label="Terhelés napja">
+        <input class="inp num" data-f="item|${it.id}|plan" value="${it.plan ?? ""}" inputmode="numeric" placeholder="alapterv" aria-label="Alapterv">
+        <select class="inp" data-f="item|${it.id}|rule" aria-label="Szabály"><option value="">havi</option><option value="week" ${rule === "week" ? "selected" : ""}>hétfőnként</option><option value="year" ${rule === "year" ? "selected" : ""}>évente</option></select>
+        <input class="inp num" data-f="item|${it.id}|param" value="${it.rule ? it.rule.perMonday : it.months ? it.months[0] : ""}" ${rule ? "" : "disabled"} inputmode="numeric" placeholder="${rule === "year" ? "hónap" : rule === "week" ? "Ft/hét" : ""}" title="${rule === "year" ? "Melyik hónapban (1–12)" : rule === "week" ? "Ft hétfőnként" : ""}" aria-label="Szabály értéke">
+        <input type="checkbox" data-f="item|${it.id}|rev" ${it.rev ? "checked" : ""} title="Revolutról megy" aria-label="Revolutról megy">
+        <input type="checkbox" data-f="item|${it.id}|off" ${it.off ? "" : "checked"} title="Aktív" aria-label="Aktív">
+        <button class="icon-btn" data-act="push" data-id="${it.id}" title="Alapterv a jövőbeli hónapokba" aria-label="Alapterv a jövőbeli hónapokba">${ICON.push}</button>
+      </div>`;
+    }
+    h += `</div>`;
+  }
+  v.innerHTML = h + `</div>`;
+}
+$("#view-items").addEventListener("click", e => {
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  if (a.dataset.act === "additem") {
+    const name = prompt("Az új tétel neve:"); if (!name || !name.trim()) return;
+    const id = uid("i"), o = Math.max(0, ...D().items.map(i => i.o || 0)) + 10;
+    D().items.push(stamp({ id, cat: a.dataset.cat, name: name.trim(), o, rev: true }));
+    persist(); renderItems(); toast("Tétel felvéve. A meglévő hónapokban 0 Ft-tal szerepel, amíg be nem írod.");
+  }
+  if (a.dataset.act === "push") {
+    const it = itemById(a.dataset.id), cur = currentMk();
+    const ks = monthKeys().filter(k => k >= cur && !month(k).meta.closed);
+    withUndo(`${it.name}: alapterv beírva ${ks.length} hónapba.`, () => {
+      for (const k of ks) { const { m } = mkParse(k), mo = month(k);
+        let p = it.rule ? period(k).mondays * (it.rule.perMonday || 0) : it.months ? (it.months.includes(m) ? it.plan || 0 : 0) : (it.plan || 0);
+        mo.lines[it.id] = stamp({ ...(mo.lines[it.id] || {}), p, ...(it.rev && !mo.lines[it.id] ? { rev: true } : {}) }); }
+    });
+  }
+});
+
+/* ================= settings ================= */
+function renderSettings(){
+  const v = $("#view-settings"), st = D().settings, theme = LS.get("theme", "auto");
+  const redirect = redirectUri();
+  v.innerHTML = `<div class="mhead"><h1>Beállítások</h1></div><div class="setg">
+  <div class="card"><div class="hd"><h2>Tárolás</h2></div><div class="bd">
+    <div>${ST.store ? (ST.store.kind === "graph" ? `OneDrive-fiók: <b>${esc(MS.account ? MS.account.username : "")}</b><br><span class="muted small">Fájl: <code>${esc(st.folder || "Budget")}/${FILE}</code>, napi mentés a <code>mentesek</code> almappába.</span>` : `Helyi mappa: <b>${esc(ST.store.label)}</b><br><span class="muted small">Fájl: <code>${FILE}</code>, napi mentés a <code>mentesek</code> almappába.</span>`) : `<b>Bemutató mód</b>, a változások nem mentődnek.`}</div>
+    <div class="actions">${graphAvailable() ? `<button class="btn" data-act="toGraph">${ICON.cloud} OneDrive-fiók</button>` : ""}${"showDirectoryPicker" in window ? `<button class="btn" data-act="toLocal">${ICON.folder} Helyi mappa</button>` : ""}${ST.store && ST.store.kind === "graph" ? `<button class="btn" data-act="logout">Kijelentkezés</button>` : ""}</div>
+    <div class="field"><label for="sCid">Microsoft alkalmazás (client) ID</label><input class="inp" id="sCid" data-act-change="cid" value="${esc(clientId())}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off"><span class="muted small">Ezen a gépen tárolódik. Átirányítási cím a regisztrációhoz (SPA): <code>${esc(redirect)}</code></span></div>
+    <div class="field"><label for="sFolder">OneDrive-mappa</label><input class="inp" id="sFolder" data-f="set|folder" value="${esc(st.folder || "Budget")}" autocomplete="off"><span class="muted small">A OneDrive gyökeréhez képest, pl. <code>Dokumentumok/Budget</code>. Ha a gépen ugyanezt a mappát nyitod meg helyi módban, ugyanazt a fájlt látod.</span></div>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Számítás</h2></div><div class="bd">
+    <div class="two"><div class="field"><label for="sPct">Réka része (%)</label><input class="inp num" id="sPct" data-f="set|rekaPct" value="${st.rekaPct}" inputmode="decimal"></div>
+    <div class="field"><label for="sRnd">Kerekítés (Ft)</label><input class="inp num" id="sRnd" data-f="set|rekaRound" value="${st.rekaRound}" inputmode="numeric"></div></div>
+    <div class="field"><label for="sMode">Kerekítés módja</label><select class="inp" id="sMode" data-f="set|rekaMode"><option value="ceil" ${st.rekaMode !== "round" ? "selected" : ""}>felfelé (a következő egészre)</option><option value="round" ${st.rekaMode === "round" ? "selected" : ""}>a legközelebbire (mint az Excelben)</option></select></div>
+    <div class="field"><label for="sSd">Az időszak kezdőnapja</label><input class="inp num" id="sSd" data-f="set|startDay" value="${st.startDay}" inputmode="numeric"><span class="muted small">A hónap ettől a naptól a következő hónap előző napjáig tart.</span></div>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Árfolyamok</h2></div><div class="bd">
+    <div class="two"><div class="field"><label for="sUsd">USD/HUF kézi</label><input class="inp num" id="sUsd" data-f="set|fxUSD" value="${st.fxUSD ?? ""}" placeholder="élő" inputmode="decimal"></div>
+    <div class="field"><label for="sEur">EUR/HUF kézi</label><input class="inp num" id="sEur" data-f="set|fxEUR" value="${st.fxEUR ?? ""}" placeholder="élő" inputmode="decimal"></div></div>
+    <div class="field"><label for="sFh">Alpha Vantage API-kulcs (részvényárakhoz)</label><input class="inp" id="sFh" data-f="set|avKey" value="${esc(st.avKey || "")}" autocomplete="off" placeholder="ingyenes: alphavantage.co/support/#api-key"></div>
+    <span class="muted small">Deviza: EKB (Frankfurter), kripto: CoinGecko, részvény: Alpha Vantage (napi 25 lekérés az ingyenes kulccsal, ezért óránként legfeljebb egyszer frissít magától). Üres kézi mező esetén az élő árfolyam számít.</span>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Adatok és megjelenés</h2></div><div class="bd">
+    <div class="actions"><button class="btn" data-act="expJson">JSON-mentés letöltése</button><button class="btn" data-act="expCsv">CSV (Excelhez)</button><button class="btn" data-act="impJson">Betöltés JSON-ból…</button></div>
+    <div class="field"><label>Téma</label><div class="seg">${[["auto","Automatikus"],["light","Világos"],["dark","Sötét"]].map(([k, n]) => `<button data-act="theme" data-v="${k}" aria-pressed="${theme === k}">${n}</button>`).join("")}</div></div>
+    <span class="muted small">Budget ${APP_VERSION}</span>
+  </div></div></div>`;
+}
+$("#view-settings").addEventListener("change", e => { if (e.target.dataset.actChange === "cid") { LS.set("clientId", e.target.value.trim()); MS.pca = null; toast("Client ID mentve ezen a gépen."); } });
+$("#view-settings").addEventListener("click", async e => {
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const act = a.dataset.act;
+  if (act === "theme") { LS.set("theme", a.dataset.v); applyTheme(); return renderSettings(); }
+  if (act === "expJson") return download(`budget-${today()}.json`, payload());
+  if (act === "expCsv") return exportCsv();
+  if (act === "impJson") { const d = await readJsonFile(); if (!d) return; withUndo("Betöltve és összefésülve.", () => { S.data = normalize(mergeData(S.data, normalize(d))); }); return; }
+  if (act === "toLocal") return pickDir();
+  if (act === "toGraph") return connectGraph();
+  if (act === "logout") return msLogout();
+});
+function readJsonFile(){ return new Promise(res => { const inp = $("#fileIn"); inp.value = ""; inp.onchange = async () => { const f = inp.files[0]; if (!f) return res(null); try { const d = JSON.parse(await f.text()); if (d.app !== "budget") throw 0; res(d); } catch(x) { toast("Ez nem Budget-mentés."); res(null); } }; inp.click(); }); }
+
+/* ================= setup & boot ================= */
+function showSetup(mode, name){
+  showApp(false);
+  const v = $("#view-setup"), fsa = "showDirectoryPicker" in window, gOk = graphAvailable();
+  const head = t => `<div class="setup"><div class="card"><h2>${t}</h2>`;
+  if (mode === "resume") v.innerHTML = head("Folytatás") + `<p>A böngésző biztonsági okból újra engedélyt kér a mappához.</p><div class="choices"><button class="btn primary" data-su="resume">Folytatás a(z) „${esc(name)}” mappával</button><button class="btn" data-su="start">Másik tárolás választása</button></div></div></div>`;
+  else if (mode === "empty") v.innerHTML = head("Még nincs adat itt: " + esc(name)) + `<p>Mivel induljunk?</p><div class="choices"><button class="btn primary" data-su="seed">A Budget 2026.xlsx adataival (2026. március – 2027. április)</button><button class="btn" data-su="import">Betöltés JSON-mentésből</button></div></div></div>`;
+  else if (mode === "graph-relogin") v.innerHTML = head("Újra be kell lépni") + `<p>A OneDrive-bejelentkezés lejárt. A nem mentett változások megmaradnak ebben az ablakban, belépés után mentem őket.</p><div class="choices"><button class="btn primary" data-su="login">Belépés Microsoft-fiókkal</button></div></div></div>`;
+  else v.innerHTML = head("Hol tároljam az adatokat?") + `<p>Az adat egyetlen fájl (<code>${FILE}</code>), mellette napi biztonsági mentések. A két mód ugyanazt a fájlt használhatja: gépen a OneDrive-mappát helyi mappaként is megnyithatod.</p>
+    <div class="choices">
+      <button class="choice" data-su="graph" ${gOk ? "" : "disabled"}>${ICON.cloud}<div><b>OneDrive-fiók</b><span>${gOk ? (clientId() ? "Gépen és telefonon, Microsoft-bejelentkezéssel." : "Előbb add meg a Microsoft client ID-t (lent).") : "Csak a webes címről (https) érhető el, fájlból megnyitva nem."}</span></div></button>
+      <button class="choice" data-su="local" ${fsa ? "" : "disabled"}>${ICON.folder}<div><b>Helyi mappa</b><span>${fsa ? "Gépen, Brave/Chrome/Edge böngészőben. Válaszd a OneDrive-on lévő mappát." : "Ez a böngésző nem tud mappába írni (telefonon ez így van)."}</span></div></button>
+      <button class="choice" data-su="demo">${ICON.eye}<div><b>Csak megnézem</b><span>Üres bemutató, mentés nélkül.</span></div></button>
+    </div>
+    ${gOk ? `<div class="field" style="margin-top:16px"><label for="suCid">Microsoft client ID</label><input class="inp" id="suCid" value="${esc(clientId())}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off"><span class="muted small">Átirányítási cím (SPA): <code>${esc(redirectUri())}</code></span></div>` : ""}
+    </div></div>`;
+  v.hidden = false;
+}
+$("#view-setup").addEventListener("change", e => { if (e.target.id === "suCid") { LS.set("clientId", e.target.value.trim()); MS.pca = null; showSetup("start"); } });
+$("#view-setup").addEventListener("click", async e => {
+  const b = e.target.closest("[data-su]"); if (!b || b.disabled) return;
+  const s = b.dataset.su;
+  if (s === "start") return showSetup("start");
+  if (s === "local") return pickDir();
+  if (s === "graph") { const c = $("#suCid"); if (c && c.value.trim()) LS.set("clientId", c.value.trim()); if (!clientId()) return toast("Add meg a client ID-t."); return connectGraph(); }
+  if (s === "login") return msLogin(true);
+  if (s === "demo") { ST.store = null; S.data = normalize(JSON.parse(JSON.stringify(SEED))); return startApp(); }
+  if (s === "resume") { const dir = await kvGet("dir"); if (dir && (await dir.requestPermission({ mode: "readwrite" })) === "granted") return openStore(LocalStore(dir)); return toast("Engedély nélkül nem nyitható meg."); }
+  if (s === "seed") { S.data = normalize(JSON.parse(JSON.stringify(SEED))); stampAllChanged(); ST.ver = null; startApp(); return flush(); }
+  if (s === "import") { const d = await readJsonFile(); if (!d) return; S.data = normalize(d); ST.ver = null; startApp(); return flush(); }
+});
+async function pickDir(){
+  try { const dir = await window.showDirectoryPicker({ id: "budget", mode: "readwrite" }); await kvSet("dir", dir); LS.set("mode", "local"); await openStore(LocalStore(dir)); }
+  catch (x) { if (x.name !== "AbortError") toast("A mappa nem nyitható meg: " + x.message); }
+}
+async function connectGraph(){
+  try { await msalInit(); LS.set("mode", "graph"); if (!MS.account) return msLogin(true); await openStore(GraphStore(D() ? D().settings.folder : LS.get("folder", "Budget"))); }
+  catch (x) { console.error(x); toast("OneDrive: " + (x.errorMessage || x.message)); }
+}
+async function openStore(store){
+  status("Betöltés…");
+  const r = await store.read();
+  let pending = S.data && ST.dirty ? S.data : null;
+  const stash = LS.get("pending", null); if (stash) { pending = pending ? mergeData(pending, normalize(stash)) : normalize(stash); LS.set("pending", null); }
+  ST.store = store;
+  if (!r) { if (pending) { ST.ver = null; startApp(); return flush(); } return showSetup("empty", store.label); }
+  S.data = pending ? normalize(mergeData(pending, r.data)) : r.data; ST.ver = r.ver;
+  if (store.kind === "graph") LS.set("folder", S.data.settings.folder || "Budget");
+  startApp(); status("Betöltve", "ok"); if (pending) flush();
+}
+function startApp(){
+  S.mk = S.mk || currentMk();
+  if (!ST.store) status("nem ment", "demo");
+  S.tab = LS.get("tab", "month"); if (!["month","year","assets","items","settings"].includes(S.tab)) S.tab = "month";
+  setTab(S.tab);
+  const px = D().assets.px; if (!px || !px.at || Date.now() - Date.parse(px.at) > 3600e3) refreshPrices(true);
+}
+async function boot(){
+  applyTheme();
+  const mode = LS.get("mode", null);
+  const redirected = /[#&](code|error)=/.test(location.hash);
+  if (graphAvailable() && clientId() && (mode === "graph" || redirected)) {
+    try {
+      await msalInit();
+      if (redirected) history.replaceState(null, "", location.pathname + location.search);
+      if (MS.account) { LS.set("mode", "graph"); return await openStore(GraphStore(LS.get("folder", "Budget"))); }
+    } catch (x) { console.error(x); toast("OneDrive: " + (x.errorMessage || x.message)); }
+    return showSetup(mode === "graph" ? "graph-relogin" : "start");
+  }
+  if (mode === "local" && "showDirectoryPicker" in window) {
+    const dir = await kvGet("dir");
+    if (dir) { try { if ((await dir.queryPermission({ mode: "readwrite" })) === "granted") return await openStore(LocalStore(dir)); } catch(x) {} return showSetup("resume", dir.name); }
+  }
+  showSetup("start");
+}
+boot();
+
+</script>
+</body>
+</html>
