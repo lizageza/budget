@@ -769,9 +769,16 @@ async function refreshPrices(quiet){
       for (const r of d) { px.crypto[r.id] = r.current_price; px.chg["cg:" + r.id] = { d: r.price_change_percentage_24h_in_currency, w: r.price_change_percentage_7d_in_currency, m: r.price_change_percentage_30d_in_currency }; }
     } catch (x) { errs.push("kripto"); }
   }
-  // részvény: napi záróárak (Alpha Vantage, ingyenes kulcs)
+  // Twelve Data (ingyenes kulcs): pillanatnyi deviza- és részvényár, napi változással
+  const td = (D().settings.tdKey || "").trim();
+  let tdOk = false;
+  if (td) {
+    try { await refreshTwelve(td, px); tdOk = true; }
+    catch (x) { errs.push("Twelve Data: " + x.message); console.warn(x); }
+  }
+  // részvény: napi záróárak (Alpha Vantage, tartalék, ha nincs Twelve Data)
   const key = D().settings.avKey;
-  if (key) for (const s of Object.values(A.stocks)) {
+  if (key && !tdOk) for (const s of Object.values(A.stocks)) {
     if (!s.sym) continue;
     try {
       const d = await getJSON(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&outputsize=compact&symbol=${encodeURIComponent(s.sym)}&apikey=${encodeURIComponent(key)}`);
@@ -783,6 +790,39 @@ async function refreshPrices(quiet){
   px.at = nowIso(); px.u = nowIso();
   A.px = px; persist(); renderAll();
   if (!quiet) toast(errs.length ? "Részben frissült (nem sikerült: " + errs.join(", ") + ")" : "Árfolyamok frissítve.");
+}
+async function tdGet(path, key){
+  const r = await fetch(`https://api.twelvedata.com/${path}${path.includes("?") ? "&" : "?"}apikey=${encodeURIComponent(key)}`, { cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const d = await r.json();
+  if (d && d.status === "error") throw new Error(d.message || "hiba " + d.code);
+  return d;
+}
+async function refreshTwelve(key, px){
+  const syms = [...new Set(Object.values(D().assets.stocks).map(s => (s.sym || "").trim().toUpperCase()).filter(Boolean))];
+  const all = ["EUR/HUF", "USD/HUF", ...syms];
+  const d = await tdGet(`quote?symbol=${encodeURIComponent(all.join(","))}`, key);
+  const q = all.length === 1 ? { [all[0]]: d } : d;
+  const val = o => o && o.status !== "error" && +o.close ? +o.close : null;
+  const pct = o => o && o.percent_change != null && o.percent_change !== "" ? +o.percent_change : null;
+  const keep = (k, d1) => ({ ...(px.chg[k] || {}), d: d1 });   // a heti/havi változás marad az idősorból
+  if (val(q["EUR/HUF"])) { px.EUR = val(q["EUR/HUF"]); px.chg.EUR = keep("EUR", pct(q["EUR/HUF"])); }
+  if (val(q["USD/HUF"])) { px.USD = val(q["USD/HUF"]); px.chg.USD = keep("USD", pct(q["USD/HUF"])); }
+  px.fxSrc = "td"; px.fxDate = today();
+  for (const s of syms) {
+    const o = q[s]; if (!val(o)) continue;
+    // heti/havi változáshoz napi idősor, naponta egyszer (1 lekérés részvényenként)
+    const cache = px.tdSer || (px.tdSer = {});
+    if (!cache[s] || cache[s].day !== today()) {
+      try { const ts = await tdGet(`time_series?symbol=${encodeURIComponent(s)}&interval=1day&outputsize=35`, key);
+        cache[s] = { day: today(), ser: (ts.values || []).map(v => [v.datetime, +v.close]).reverse() }; } catch (x) { console.warn(x); }
+    }
+    const ser = (cache[s] && cache[s].ser || []).slice();
+    if (ser.length) { const dt = (o.datetime || today()).slice(0, 10); if (ser[ser.length - 1][0] === dt) ser[ser.length - 1] = [dt, val(o)]; else ser.push([dt, val(o)]); }
+    const ch = changes(ser) || {};
+    px.stock[s] = val(o); px.stockDate = (o.datetime || "").slice(0, 16); px.stockOpen = !!o.is_market_open;
+    px.chg["st:" + s] = { w: ch.w, m: ch.m, d: pct(o) };
+  }
 }
 function fx(cur){
   if (cur === "HUF") return 1;
@@ -1837,7 +1877,7 @@ function renderAssets(){
   // stocks
   h += `<div class="card"><div class="hd"><h2>Részvények</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="addstock">${ICON.plus}</button></div><div class="tblwrap"><table class="t"><thead><tr><th>Jel</th><th>Darab</th><th>Ár (USD)</th><th>Érték (USD)</th><th>Érték (Ft)</th><th></th></tr></thead><tbody>`;
   for (const [id, s] of Object.entries(A.stocks)) { const p = stockPrice(s); h += `<tr><td><input class="inp" style="width:80px" data-f="stock|${id}|sym" value="${esc(s.sym)}"></td><td><input class="inp num" style="width:80px" inputmode="decimal" data-f="stock|${id}|qty" value="${s.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="stock|${id}|usd" value="${p || ""}" title="${s.manual ? "kézi ár" : "élő / utolsó ár"}"></td><td class="num">$${fmtN((+s.qty || 0) * p, 2)}</td><td class="num">${fmt((+s.qty || 0) * p * usd)}</td><td><button class="icon-btn" data-act="del" data-g="stocks" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
-  h += `</tbody></table></div><div class="bd muted small" style="padding-top:8px">${D().settings.avKey ? "Napi záróár: Alpha Vantage" + (D().assets.px && D().assets.px.stockDate ? " (" + D().assets.px.stockDate + ")" : "") + "." : "Élő árhoz adj meg ingyenes Alpha Vantage-kulcsot a Beállításokban; addig az itt beírt ár számít."}</div></div>`;
+  h += `</tbody></table></div><div class="bd muted small" style="padding-top:8px">${D().settings.tdKey ? "Élő ár: Twelve Data" + (D().assets.px && D().assets.px.stockDate ? " (" + D().assets.px.stockDate + (D().assets.px.stockOpen ? ", nyitott tőzsde" : ", zárt tőzsde: utolsó ár") + ")" : "") + "." : D().settings.avKey ? "Napi záróár: Alpha Vantage" + (D().assets.px && D().assets.px.stockDate ? " (" + D().assets.px.stockDate + ")" : "") + "." : "Élő árhoz adj meg ingyenes Twelve Data-kulcsot a Beállításokban; addig az itt beírt ár számít."}</div></div>`;
   // crypto
   h += `<div class="card"><div class="hd"><h2>Kripto</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="addcrypto">${ICON.plus}</button></div><div class="tblwrap"><table class="t"><thead><tr><th>Jel</th><th>Mennyiség</th><th>Ár (USD)</th><th>Érték (USD)</th><th>Érték (Ft)</th><th></th></tr></thead><tbody>`;
   let ct = 0;
@@ -1933,8 +1973,10 @@ function renderSettings(){
   <div class="card"><div class="hd"><h2>Árfolyamok</h2></div><div class="bd">
     <div class="two"><div class="field"><label for="sUsd">USD/HUF kézi</label><input class="inp num" id="sUsd" data-f="set|fxUSD" value="${st.fxUSD ?? ""}" placeholder="élő" inputmode="decimal"></div>
     <div class="field"><label for="sEur">EUR/HUF kézi</label><input class="inp num" id="sEur" data-f="set|fxEUR" value="${st.fxEUR ?? ""}" placeholder="élő" inputmode="decimal"></div></div>
-    <div class="field"><label for="sFh">Alpha Vantage API-kulcs (részvényárakhoz)</label><input class="inp" id="sFh" data-f="set|avKey" value="${esc(st.avKey || "")}" autocomplete="off" placeholder="ingyenes: alphavantage.co/support/#api-key"></div>
-    <span class="muted small">Deviza: EKB (Frankfurter), kripto: CoinGecko, részvény: Alpha Vantage (napi 25 lekérés az ingyenes kulccsal, ezért óránként legfeljebb egyszer frissít magától). Üres kézi mező esetén az élő árfolyam számít.</span>
+    <div class="field"><label for="sTd">Twelve Data API-kulcs (élő deviza és részvény)</label><input class="inp" id="sTd" data-f="set|tdKey" value="${esc(st.tdKey || "")}" autocomplete="off" placeholder="ingyenes: twelvedata.com → Dashboard → API Keys"></div>
+    <div class="actions" style="justify-content:flex-start"><button class="btn" data-act="tdtest">Kapcsolat tesztelése</button></div>
+    <div class="field"><label for="sFh">Alpha Vantage API-kulcs (tartalék, csak napi záróár)</label><input class="inp" id="sFh" data-f="set|avKey" value="${esc(st.avKey || "")}" autocomplete="off" placeholder="nem kötelező"></div>
+    <span class="muted small">Twelve Data kulccsal: pillanatnyi EUR/HUF, USD/HUF és részvényár (egy frissítés kb. 3–4 lekérés a napi 800-ból). Nélküle: deviza az EKB napi referencia-árfolyama (Frankfurter), részvény az Alpha Vantage napi záróára vagy a kézzel beírt ár. Kripto mindig élő (CoinGecko). Magától óránként legfeljebb egyszer frissít; a heti és havi változás az EKB-adatsorból jön. Kitöltött kézi mezőnél a kézi árfolyam számít.</span>
   </div></div>
   <div class="card"><div class="hd"><h2>Blokkolvasás (Google Gemini)</h2></div><div class="bd">
     <div class="field"><label for="sGk">Gemini API-kulcs</label><input class="inp" id="sGk" data-f="set|gemKey" value="${esc(st.gemKey || "")}" autocomplete="off" placeholder="aistudio.google.com → Get API key"></div>
@@ -1957,6 +1999,9 @@ $("#view-settings").addEventListener("click", async e => {
   if (act === "expJson") return download(`budget-${today()}.json`, payload());
   if (act === "expCsv") return exportCsv();
   if (act === "impJson") { const d = await readJsonFile(); if (!d) return; withUndo("Betöltve és összefésülve.", () => { S.data = normalize(mergeData(S.data, normalize(d))); }); return; }
+  if (act === "tdtest") { const k = (D().settings.tdKey || "").trim(); if (!k) return toast("Előbb add meg a kulcsot."); a.disabled = true;
+    try { const d = await tdGet("quote?symbol=EUR/HUF", k); toast(`Rendben. EUR/HUF most: ${fmtN(+d.close, 2)} (${(d.datetime || "").slice(0, 16)})`); refreshPrices(true); } catch (x) { toast("Twelve Data: " + (x.message === "Failed to fetch" ? "a böngésző nem érte el (hálózat vagy blokkoló)" : x.message)); }
+    a.disabled = false; return; }
   if (act === "gemtest") { a.disabled = true; try { const l = await gemModels(true); toast(l.length ? "Rendben. Modell: " + ((D().settings.gemModel || "").trim() || l[0]) : "A kulcs jó, de nincs Flash modell."); } catch (x) { toast(x.message); } a.disabled = false; return; }
   if (act === "toLocal") return pickDir();
   if (act === "toGraph") return connectGraph();
