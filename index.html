@@ -16,7 +16,7 @@
   --accent:#0F6B5C; --accent-ink:#FFFFFF; --accent-soft:#DCEDE8;
   --good:#1d7a45; --warn:#9a6700; --bad:#b3261e; --bad-soft:#F7E1DE; --good-soft:#DFF0E4;
   --rev:#3A55C7; --rev-soft:#E2E7FA;
-  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948; --s9:#8C9490;
   --shadow:0 1px 2px rgba(22,32,29,.05),0 6px 20px rgba(22,32,29,.07);
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
@@ -28,7 +28,7 @@
   --accent:#4FC3A8; --accent-ink:#0E1614; --accent-soft:#1F3631;
   --good:#5cc27f; --warn:#e3b341; --bad:#ff8a80; --bad-soft:#3A2220; --good-soft:#1C3325;
   --rev:#8EA2F5; --rev-soft:#252B47;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#6F7874;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
   color-scheme:dark}}
 :root[data-theme="dark"]{
@@ -36,7 +36,7 @@
   --accent:#4FC3A8; --accent-ink:#0E1614; --accent-soft:#1F3631;
   --good:#5cc27f; --warn:#e3b341; --bad:#ff8a80; --bad-soft:#3A2220; --good-soft:#1C3325;
   --rev:#8EA2F5; --rev-soft:#252B47;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s9:#6F7874;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
   color-scheme:dark}
 *{box-sizing:border-box}
@@ -309,6 +309,72 @@ code{font:12.5px var(--f-mono);background:var(--surface-2);border:1px solid var(
 .tkr{align-self:center}
 @media (max-width:900px){.ticker{grid-template-columns:repeat(2,minmax(0,1fr))}.tkr{display:none}}
 
+/* tabs: rövid címke mobilon */
+nav.tabs .ls{display:none}
+@media (max-width:760px){nav.tabs .lf{display:none} nav.tabs .ls{display:inline} nav.tabs button{padding:6px 2px;min-width:0}}
+
+/* költések */
+.seg.wrap{flex-wrap:wrap;gap:2px}
+.qprev{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.qprev .big{font-size:20px;font-weight:600}
+.qprev .nm{font-weight:500}
+.spendbtns{display:flex;gap:8px;flex-wrap:wrap;padding-top:0}
+.spendbtns .btn{flex:1 1 140px}
+.spl li{grid-template-columns:44px minmax(0,1fr) auto}
+.spl .day{font-size:12px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.th{position:relative;aspect-ratio:3/4;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface-2)}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th .pdf{display:grid;place-content:center;text-align:center;height:100%;font:600 15px var(--f-mono);color:var(--muted)}
+.th .pdf span{font:400 10.5px var(--f-body);word-break:break-all;padding:0 4px}
+.th .n{position:absolute;left:4px;top:4px;background:var(--surface);border-radius:5px;font:600 11px var(--f-mono);padding:1px 5px}
+.th .icon-btn{position:absolute;right:2px;top:2px;background:color-mix(in srgb,var(--surface) 85%,transparent);padding:3px}
+.th .icon-btn svg{width:15px;height:15px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.rline{display:grid;grid-template-columns:minmax(0,1fr) 92px minmax(0,150px) 30px;gap:6px;align-items:center;margin-bottom:6px}
+.rline.hd{font-size:12px;color:var(--muted);margin-bottom:4px}
+.rline .inp{min-height:36px;padding:6px 8px;font-size:14px}
+.rline select.inp{padding-right:2px}
+@media (max-width:560px){.rline{grid-template-columns:minmax(0,1fr) 84px 30px}.rline select{grid-column:1/3;order:4}.rline .icon-btn{order:3}.rline{padding-bottom:6px;border-bottom:1px solid var(--line-2)}.rline.hd span:nth-child(3){display:none}}
+.rtot{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.rtot.bad{border-color:var(--warn)}
+.warnline{grid-column:1/-1;color:var(--warn);font-size:13px;margin-top:4px}
+.rgroups{display:flex;flex-wrap:wrap;gap:4px}
+
+/* statisztika */
+.sfbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.sfbar .inp{width:auto;min-height:38px;padding:7px 10px}
+.sfbar .grow{flex:1 1 220px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chipbtn{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chipbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
+.kpis.k5{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:16px}
+@media (max-width:1000px){.kpis.k5{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+@media (max-width:900px){.sgrid{grid-template-columns:minmax(0,1fr)}}
+.hb{display:grid;gap:2px}
+.hbr{display:grid;grid-template-columns:minmax(110px,38%) minmax(0,1fr) 84px 38px;gap:10px;align-items:center;padding:5px 6px;border-radius:7px;font-size:14px}
+.hbr.clk{cursor:pointer}.hbr.clk:hover{background:var(--surface-2)}
+.hbr.sub{font-size:13px;color:var(--muted)}
+.hbr.sub .hl{padding-left:18px}
+.hl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.caret{display:inline-block;width:14px;color:var(--muted)}
+.hbar{height:12px;background:var(--surface-2);border-radius:0 4px 4px 0;overflow:hidden}
+.hbar i{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0;min-width:2px}
+.hv{text-align:right}.hp{text-align:right;color:var(--muted);font-size:12.5px}
+@media (max-width:560px){.hbr{grid-template-columns:minmax(0,1fr) 78px 34px;row-gap:3px}.hbr .hbar{grid-column:1/-1;grid-row:2}}
+.smap{display:grid;gap:6px;padding:0 16px 14px;max-height:420px;overflow:auto}
+.smap label{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,210px);gap:10px;align-items:center;font-size:14px}
+.smap label.off{opacity:.55}
+.smap .inp{min-height:34px;padding:5px 8px;font-size:13.5px}
+.bd .smap{padding:0}
+tr.clk{cursor:pointer} tr.clk:hover td{background:var(--surface-2)}
+table.compact td{padding:4px 6px}
+table.t th.tx,table.t td.tx{text-align:left;white-space:normal;min-width:90px}
+table.t td.tx.nm{min-width:160px}
+@media (max-width:1000px){.kpis.k5 .kpi:last-child{grid-column:1/-1}}
+
 </style>
 </head>
 <body>
@@ -317,6 +383,7 @@ code{font:12.5px var(--f-mono);background:var(--surface-2);border:1px solid var(
   <nav class="tabs" id="tabs" hidden>
     <button data-tab="month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Hónap</span></button>
     <button data-tab="year"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Év</span></button>
+    <button data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 109 9h-9z"/><path d="M15 3.5A9 9 0 0120.5 9H15z"/></svg><span class="lf">Statisztika</span><span class="ls">Stat.</span></button>
     <button data-tab="assets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l9-6 9 6M5 10v9M19 10v9M9.5 10v9M14.5 10v9M3 20h18"/></svg><span>Vagyon</span></button>
     <button data-tab="items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" stroke-linecap="round"/></svg><span>Tételek</span></button>
     <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg><span>Beállítás</span></button>
@@ -327,6 +394,7 @@ code{font:12.5px var(--f-mono);background:var(--surface-2);border:1px solid var(
   <section id="view-setup" hidden></section>
   <section id="view-month" hidden></section>
   <section id="view-year" hidden></section>
+  <section id="view-stats" hidden></section>
   <section id="view-assets" hidden></section>
   <section id="view-items" hidden></section>
   <section id="view-settings" hidden></section>
@@ -335,13 +403,15 @@ code{font:12.5px var(--f-mono);background:var(--surface-2);border:1px solid var(
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drTitle"></aside>
 <div class="toast" id="toast" role="status"></div>
 <input type="file" id="fileIn" accept=".json,application/json" hidden>
+<input type="file" id="camIn" accept="image/*" capture="environment" hidden>
+<input type="file" id="upIn" accept="image/*,application/pdf,.pdf" multiple hidden>
 <script>
 const SEED = {"app": "budget", "version": 1, "savedAt": null, "settings": {"rekaPct": 52, "rekaRound": 5000, "rekaMode": "ceil", "startDay": 10, "folder": "Budget"}, "cats": [{"id": "inc", "name": "Bevételek", "icon": "💵", "kind": "income", "u": "2026-09-30T12:00:00.000Z"}, {"id": "lak", "name": "Lakás & rezsi", "icon": "🏠", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "dig", "name": "Digitális rezsi", "icon": "📱", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "csal", "name": "Család", "icon": "👨‍👩‍👧‍👦", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "gyer", "name": "Gyerekek", "icon": "🎒", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "vall", "name": "Vállalkozói", "icon": "💼", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "megt", "name": "Megtakarítás & hitel", "icon": "💰", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}, {"id": "eseti", "name": "Eseti", "icon": "📝", "kind": "expense", "u": "2026-09-30T12:00:00.000Z"}], "items": [], "months": {}, "assets": {"accounts": {}, "stocks": {}, "crypto": {}, "debts": {}, "snaps": {}}, "deleted": {}};
 </script>
 <script>
 "use strict";
 /* ================= config ================= */
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 const CLIENT_ID_DEFAULT = "9dc570fe-f641-46ed-93be-5414be4ae0c9";            // Microsoft app (client) ID – a Beállításokban is megadható
 const GRAPH_SCOPES = ["Files.ReadWrite"];
 const FILE = "budget.json";
@@ -447,7 +517,8 @@ function calc(k){
   r.reka = rekaOf(r.bal.p);
   r.rekaPaid = mo.meta && mo.meta.rekaPaid != null ? +mo.meta.rekaPaid : null;
   r.revolut = mo.meta && mo.meta.revolut != null && mo.meta.revolut !== "" ? +mo.meta.revolut : null;
-  r.keret = r.revolut == null ? null : r.revolut - r.revOpen;
+  r.spendRev = spendRevAfter(k);
+  r.keret = r.revolut == null ? null : r.revolut - r.revOpen - r.spendRev.sum;
   return r;
 }
 
@@ -507,12 +578,13 @@ function mergeData(A, B){
   out.assets = {};
   for (const g of ["accounts","stocks","crypto","debts","snaps"]) out.assets[g] = mergeObj(aa[g], bb[g], "assets/" + g, del);
   out.assets.px = newer(aa.px, bb.px);
+  for (const g of ["spend","learn","statmap"]) out[g] = mergeObj(A[g], B[g], g, del);
   return out;
 }
 function normalize(d){
   d.settings = { rekaPct: 52, rekaRound: 5000, rekaMode: "ceil", startDay: 10, folder: "Budget", ...(d.settings || {}) };
   d.cats = d.cats || []; d.items = d.items || []; d.months = d.months || {}; d.deleted = d.deleted || {};
-  d.assets = d.assets || {};
+  d.assets = d.assets || {}; d.spend = d.spend || {}; d.learn = d.learn || {}; d.statmap = d.statmap || {};
   for (const g of ["accounts","stocks","crypto","debts","snaps"]) d.assets[g] = d.assets[g] || {};
   for (const mo of Object.values(d.months)) { mo.lines = mo.lines || {}; mo.extras = mo.extras || {}; mo.meta = mo.meta || {}; }
   for (const [id, dt] of Object.entries(d.assets.debts)) if (!dt.id) dt.id = id;
@@ -591,7 +663,8 @@ function LocalStore(dir){
       const names = []; for await (const [n] of d.entries()) if (/^budget-\d{4}-\d\d-\d\d\.json$/.test(n)) names.push(n);
       names.sort(); for (const n of names.slice(0, Math.max(0, names.length - 60))) await d.removeEntry(n).catch(() => {});
     },
-    async writeFile(sub, name, txt){ const d = await dir.getDirectoryHandle(sub, { create: true }); const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(txt); await w.close(); }
+    async writeFile(sub, name, body){ let d = dir; for (const p of sub.split("/").filter(Boolean)) d = await d.getDirectoryHandle(p, { create: true }); const fh = await d.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(body); await w.close(); },
+    async fileUrl(path){ const ps = path.split("/").filter(Boolean), nm = ps.pop(); let d = dir; for (const p of ps) d = await d.getDirectoryHandle(p); return URL.createObjectURL(await (await d.getFileHandle(nm)).getFile()); }
   };
 }
 
@@ -657,7 +730,8 @@ function GraphStore(folder){
       const put = await g(`${base}/mentesek/budget-${today()}.json:/content?@microsoft.graph.conflictBehavior=fail`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: await c.text() });
       if (put.ok || put.status === 409) LS.set("bk.graph", today());
     },
-    async writeFile(sub, name, txt){ const r = await g(`${base}/${seg(sub)}/${encodeURIComponent(name)}:/content`, { method: "PUT", headers: { "Content-Type": "text/plain" }, body: txt }); if (!r.ok) throw new Error("OneDrive HTTP " + r.status); }
+    async writeFile(sub, name, body, type){ const r = await g(`${base}/${seg(sub)}/${encodeURIComponent(name)}:/content`, { method: "PUT", headers: { "Content-Type": type || "text/plain" }, body }); if (!r.ok) throw new Error("OneDrive HTTP " + r.status); },
+    async fileUrl(path){ const r = await g(`${base}/${seg(path)}?select=@microsoft.graph.downloadUrl`); if (!r.ok) throw new Error("OneDrive HTTP " + r.status); return (await r.json())["@microsoft.graph.downloadUrl"]; }
   };
 }
 
@@ -730,6 +804,7 @@ function debtParts(dt){
     if (k >= from) for (const x of Object.values(mo.extras)) if (x.debt === dt.id && (k > from || (x.at || x.u || "") > base)) extra += +(x.a ?? x.p) || 0;
   }
   for (const l of Object.values(dt.log || {})) if ((l.at || "") > base) { if (l.t === "fee") fee += +l.amt || 0; else charge += +l.amt || 0; }
+  for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza" && (s.at || "") > base) charge += spendHuf(s);   // kártyával fizetett rögzített költés
   const rem = Math.max((+dt.start || 0) - paid - extra + charge + fee, 0);
   return { rem, paid, extra, charge, fee };
 }
@@ -765,6 +840,419 @@ function assetTotals(){
   return t;
 }
 
+/* ================= statisztikai osztályozás ================= */
+/* főcsoport → alkategóriák. A "ns" (nem költés) csoportok a „mire költünk” összegbe nem számítanak. */
+const TAX = [
+  { id: "rezsi",  name: "Rezsi", c: "--s1", subs: [["gaz","Gáz"],["villany","Villany"],["viz","Víz"],["hull","Hulladék"]] },
+  { id: "komm",   name: "Kommunikáció és előfizetések", c: "--s2", subs: [["tel","Telefon, net"],["dig","Digitális előfizetés"]] },
+  { id: "etk",    name: "Étkezés", c: "--s3", subs: [["elel","Élelmiszer"],["nasi","Nasi és üdítő"],["alk","Alkohol"],["ett","Étterem, büfé, rendelés"]] },
+  { id: "haz",    name: "Háztartás", c: "--s4", subs: [["drog","Háztartás és drogéria"],["karb","Karbantartás, javítás, barkács"]] },
+  { id: "koz",    name: "Közlekedés", c: "--s5", subs: [["uza","Üzemanyag"],["ado","Autó adó"],["auto","Autó egyéb"]] },
+  { id: "gyer",   name: "Gyerekek", c: "--s6", subs: [["isk","Iskola, iskolai étkezés"],["edz","Edzés, különóra"],["zseb","Zsebpénz"],["berl","Bérlet"],["vas","Gyerek vásárlás"]] },
+  { id: "eg",     name: "Egészség és biztosítás", c: "--s7", subs: [["ep","Egészségpénztár"],["bizt","Biztosítás"],["gyogy","Gyógyszer, patika, orvos"]] },
+  { id: "hobbi",  name: "Hobbi és szórakozás", c: "--s8", subs: [["retro","Hobbi, gyűjtés"],["szor","Szórakozás, program"],["tech","Online / tech vásárlás"]] },
+  { id: "lak",    name: "Lakáshitel", c: "--s9", subs: [["fund","Lakáshitel-törlesztés"]] },
+  { id: "ruha",   name: "Ruha", c: "--s9", subs: [["ruha","Ruha, cipő"]] },
+  { id: "vall",   name: "Vállalkozói", c: "--s9", subs: [["ado","Iparűzési adó"],["kam","Kamarai díj"]] },
+  { id: "egyeb",  name: "Egyéb", c: "--s9", subs: [["egyeb","Egyéb"]] },
+  { id: "megt",   name: "Megtakarítás", ns: true, subs: [["megt","Megtakarítás"]] },
+  { id: "hitel",  name: "Hitelkártya-törlesztés", ns: true, subs: [["kartya","Hitelkártya-törlesztés"]] },
+  { id: "reka",   name: "Rékának utalás", ns: true, subs: [["reka","Rékának utalás"]] }
+];
+const SUBS = {}; for (const g of TAX) for (const [s, n] of g.subs) SUBS[g.id + "." + s] = { id: g.id + "." + s, g: g.id, name: n, gname: g.name, ns: !!g.ns };
+const groupOf = sc => (SUBS[sc] || SUBS["egyeb.egyeb"]).g;
+const taxGroup = id => TAX.find(g => g.id === id);
+/* a halmozott diagram színei: 8 fix szín; a lakáshitel a rezsivel közös sávban, a kisebb csoportok (Ruha, Vállalkozói, Egyéb) közös szürkében */
+const STACK = [["lak","rezsi"],["komm"],["etk"],["haz"],["koz"],["gyer"],["eg"],["hobbi"],["ruha","vall","egyeb"]];
+const stackOf = g => STACK.findIndex(a => a.includes(g));
+const stackName = i => i === 0 ? "Lakáshitel és rezsi" : i === 8 ? "Egyéb (ruha, vállalkozói, egyéb)" : taxGroup(STACK[i][0]).name;
+const stackColor = i => i === 8 ? cssVar("--s9") : cssVar(SERIES[i]);
+
+/* a meglévő tételek alapértelmezett besorolása általános szabályokkal (a Statisztika fülön átírható).
+   Szándékosan nincs benne konkrét tételazonosító, mert ez a fájl nyilvános. */
+function itemScAuto(it){
+  const n = " " + fold(it.name) + " ", has = re => re.test(n);
+  if (Object.values(D().assets.debts || {}).some(d => d.item === it.id) || has(/hitelkartya/)) return "hitel.kartya";
+  if (it.cat === "megt") return has(/hitel|torleszt/) ? "lak.fund" : "megt.megt";
+  if (it.cat === "dig") return "komm.dig";
+  if (it.cat === "vall") return has(/ado/) ? "vall.ado" : "vall.kam";
+  if (has(/ gaz /)) return "rezsi.gaz";
+  if (has(/villany|aram/)) return "rezsi.villany";
+  if (has(/ viz |csatorna/)) return "rezsi.viz";
+  if (has(/hulladek|szemet/)) return "rezsi.hull";
+  if (has(/egeszsegpenztar|\bep\b/)) return "eg.ep";
+  if (has(/biztositas/)) return "eg.bizt";
+  if (has(/telefon|internet|mobil| net |telekom|telenor|vodafone|yettel|digi /)) return "komm.tel";
+  if (has(/fundamenta|lakastakarek|lakashitel|jelzalog|torleszto/)) return "lak.fund";
+  if (has(/uzemanyag|benzin|tankol/)) return "koz.uza";
+  if (has(/ ado /) && (it.cat === "csal" || has(/auto/))) return "koz.ado";
+  if (it.cat === "gyer") return has(/zsebpenz/) ? "gyer.zseb" : has(/berlet/) ? "gyer.berl" : has(/edzes|kulonora|balett|tanc|uszas|foci|zene|sport/) ? "gyer.edz" : has(/iskola|tandij|etkezes|menza|ovoda/) ? "gyer.isk" : "gyer.vas";
+  if (has(/hobbi/)) return "hobbi.retro";
+  return guessSc(it.name) || "egyeb.egyeb";
+}
+function itemSc(it){ const m = D().statmap || {}; return (m[it.id] && m[it.id].sc) || itemScAuto(it); }
+function extraSc(x){ if (x.sc) return x.sc; if (x.debt) return "hitel.kartya"; if (x.cat === "megt") return "megt.megt"; return guessSc(x.name) || "egyeb.egyeb"; }
+
+/* ================= kulcsszavas besorolás (internet nélkül is) ================= */
+const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+const KW = [
+  ["etk.alk", "sor sort sorok heineken borsodi dreher soproni arany aszok kobanyai staropramen pilsner bor borok rose tokaji pezsgo palinka whisky whiskey vodka rum gin likor jagermeister unicum vermut cider fröccs"],
+  ["etk.nasi", "chips chio pringles lays snack ropi popcorn cola kola coca pepsi sprite fanta schweppes kinley mountain dew uditok udito hell monster red bull redbull burn energiaital energy csoki csokolade milka cadbury kinder bounty snickers mars twix balaton boci sport szelet tibi nutella oreo keksz nápolyi napolyi gumicukor haribo cukorka nyalóka nyaloka fagyi fagylalt jegkrem magnum cornetto desszert sutemeny fank croissant tortaszelet drazse mogyoro pisztacia"],
+  ["etk.ett", "etterem bufe pizza pizzeria burger kfc mcdonald mcdonalds burger king subway wolt foodora netpincer kebab gyros sushi kavezo cukraszda menu ebed vacsora kiszallitas starbucks costa"],
+  ["etk.elel", "kenyer kifli zsemle pekaru tej tejfol joghurt sajt vaj tojas hus csirke sertes marha sonka szalami kolbasz virsli felvagott liszt cukor so rizs teszta zoldseg gyumolcs alma banan paradicsom paprika krumpli burgonya hagyma uborka salata olaj ecet kave tea muzli zabpehely konzerv fozelek tesco lidl aldi spar penny auchan cba coop prima interspar"],
+  ["haz.drog", "dm rossmann muller drogeria mososzer oblito ariel persil lenor jar mosogato wc papir toalettpapir papirzsebkendo szalveta tusfurdo sampon fogkrem fogkefe dezodor borotva pelenka szappan tisztitoszer szivacs zacsko szemeteszsak folia alufolia"],
+  ["haz.karb", "obi praktiker bauhaus leroy merlin barkacs csavar festek izzo elem szerszam javitas szerelo vizvezetek villanyszerelo ikea jysk butor"],
+  ["koz.uza", "benzin gazolaj diesel tankolas uzemanyag mol omv shell orlen lukoil"],
+  ["koz.auto", "parkolas parkolo autopalya matrica autómosó automoso szerviz gumi olajcsere muszaki kgfb casco"],
+  ["eg.gyogy", "patika gyogyszertar gyogyszer vitamin orvos fogorvos labor recept kontaktlencse szemuveg optika"],
+  ["ruha.ruha", "ruha cipo polo nadrag farmer kabat dzseki pulover zokni alsonemu hm zara reserved deichmann decathlon sportruha"],
+  ["hobbi.szor", "mozi cinema city jegy koncert szinhaz muzeum belepo strand furdo jatszohaz bowling tarsasjatek"],
+  ["hobbi.tech", "emag alza amazon aliexpress temu media markt mediamarkt euronics extreme digital edigital steam playstation xbox nintendo usb kabel tolto"],
+  ["gyer.vas", "jatek lego iskolaszer fuzet tolltarto ceruza gyerek"]
+].map(([sc, w]) => [sc, w.split(" ")]);
+function guessSc(text){
+  const t = " " + fold(text) + " ";
+  const learn = D().learn || {};
+  // 1) saját szótár: teljes név, aztán szavanként
+  const full = fold(text); if (learn[full]) return learn[full].sc;
+  for (const w of full.split(" ")) if (w.length > 2 && learn[w]) return learn[w].sc;
+  // 2) beépített kulcsszavak
+  for (const [sc, ws] of KW) for (const w of ws) if (w && t.includes(" " + w + " ")) return sc;
+  for (const [sc, ws] of KW) for (const w of ws) if (w.length >= 5 && t.includes(w)) return sc;
+  return null;
+}
+function learnSc(name, sc){
+  const full = fold(name); if (!full || !SUBS[sc]) return;
+  D().learn = D().learn || {};
+  D().learn[full] = { sc, u: nowIso() };
+  const first = full.split(" ").find(w => w.length > 2 && !/^\d+$/.test(w));
+  if (first && first !== full) D().learn[first] = { sc, u: nowIso() };
+}
+function scOptions(sel, nsToo){
+  return TAX.filter(g => nsToo || !g.ns).map(g => `<optgroup label="${esc(g.name)}">${g.subs.map(([s, n]) => { const id = g.id + "." + s; return `<option value="${id}" ${id === sel ? "selected" : ""}>${esc(n)}</option>`; }).join("")}</optgroup>`).join("");
+}
+
+/* ================= költések (blokk, gyors bevitel) ================= */
+const PAY = () => [["rev","Revolut"],["raif","Raiffeisen"],["cash","Készpénz"], ...Object.values(D().assets.debts).map(d => [d.id, d.name + "-kártya"])];
+const payName = id => (PAY().find(p => p[0] === id) || [id, id])[1];
+const CURS = ["HUF","EUR","USD"];
+const curSym = c => c === "HUF" ? "Ft" : c === "EUR" ? "€" : "$";
+function mkOfDate(ds){ const [y, m, d] = String(ds || today()).split("-").map(Number); return d >= startDay() ? mkOf(y, m) : mkOf(y, m - 1); }
+const spends = () => Object.entries(D().spend || {}).map(([id, s]) => ({ ...s, id }));
+function spendHuf(s){ return Math.round((s.lines || []).reduce((a, l) => a + (+l.a || 0), 0) * (s.rate || 1)); }
+function spendsOf(k, who){ return spends().filter(s => mkOfDate(s.d) === k && (!who || (s.who || "geza") === who)).sort((a, b) => (b.d || "").localeCompare(a.d || "") || (b.at || "").localeCompare(a.at || "")); }
+/* a keretből: a Revolut-egyenleg megadása után rögzített, Revolutról fizetett saját költések */
+function spendRevAfter(k){
+  const mo = month(k); if (!mo || !mo.meta.revAt) return { sum: 0, n: 0 };
+  const at = mo.meta.revAt, day = at.slice(0, 10);
+  let sum = 0, n = 0;
+  for (const s of spendsOf(k, "geza")) if (s.pay === "rev" && (s.at || "") > at && (s.d || "") >= day) { sum += spendHuf(s); n++; }
+  return { sum, n };
+}
+function saveSpend(id, s){
+  D().spend = D().spend || {};
+  const rate = s.cur && s.cur !== "HUF" ? fx(s.cur) : 1;
+  D().spend[id] = stamp({ ...s, rate, huf: undefined });
+  D().spend[id].huf = spendHuf(D().spend[id]);
+  delete D().deleted["spend/" + id];
+  persist(); renderAll();
+}
+function delSpend(id){
+  const before = D().spend[id]; delete D().spend[id]; D().deleted["spend/" + id] = nowIso(); persist(); renderAll();
+  toast("Költés törölve.", () => { D().spend[id] = stamp({ ...before }); delete D().deleted["spend/" + id]; persist(); renderAll(); });
+}
+
+/* ================= Gemini ================= */
+const GEM = "https://generativelanguage.googleapis.com/v1beta";
+const gemKey = () => (D().settings.gemKey || "").trim();
+async function gemModels(force){
+  const c = LS.get("gemModels", null);
+  if (!force && c && Date.now() - c.t < 864e5 && c.list.length) return c.list;
+  const r = await fetch(`${GEM}/models?pageSize=200`, { headers: { "x-goog-api-key": gemKey() } });
+  if (!r.ok) throw gemErr(r.status, await r.text());
+  const d = await r.json();
+  const ver = n => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+  const list = (d.models || []).filter(m => (m.supportedGenerationMethods || []).includes("generateContent"))
+    .map(m => m.name.replace(/^models\//, ""))
+    .filter(n => /^gemini-[\d.]+-flash/.test(n) && !/(image|tts|live|audio|embed|thinking|exp|robotics|computer)/.test(n))
+    .sort((a, b) => (/lite/.test(a) - /lite/.test(b)) || (/preview/.test(a) - /preview/.test(b)) || ver(b) - ver(a) || a.length - b.length);
+  LS.set("gemModels", { t: Date.now(), list });
+  return list;
+}
+function gemErr(status, body){
+  let msg = ""; try { msg = JSON.parse(body).error.message; } catch(x) { msg = String(body).slice(0, 160); }
+  const e = new Error(status === 429 ? "Elfogyott a Gemini ingyenes kerete (próbáld később)." : status === 400 && /API key/i.test(msg) ? "Érvénytelen Gemini API-kulcs." : status === 403 ? "A Gemini API-kulcs nem engedélyezett (403)." : "Gemini hiba " + status + ": " + msg);
+  e.status = status; return e;
+}
+async function gemCall(parts, schema){
+  if (!gemKey()) { const e = new Error("Nincs megadva Gemini API-kulcs (Beállítások)."); e.nokey = true; throw e; }
+  const fixed = (D().settings.gemModel || "").trim();
+  const cands = fixed ? [fixed] : await gemModels();
+  if (!cands.length) throw new Error("Nem találok használható Gemini Flash modellt ehhez a kulcshoz.");
+  let last;
+  for (const m of cands.slice(0, 4)) {
+    const r = await fetch(`${GEM}/models/${m}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": gemKey() },
+      body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { temperature: 0.1, responseMimeType: "application/json", responseSchema: schema } }) });
+    if (r.ok) {
+      const d = await r.json();
+      const txt = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || "").join("");
+      if (!txt) { last = new Error("A Gemini üres választ adott" + (d.promptFeedback && d.promptFeedback.blockReason ? " (" + d.promptFeedback.blockReason + ")" : "") + "."); continue; }
+      LS.set("gemLast", m);
+      return JSON.parse(txt);
+    }
+    last = gemErr(r.status, await r.text());
+    if (r.status === 429 || r.status === 403 || (r.status === 400 && /API key/i.test(last.message))) {
+      if (r.status === 429 && !fixed) continue;   // más modellnek lehet külön kerete
+      throw last;
+    }
+    if (r.status === 404) LS.set("gemModels", null);
+  }
+  throw last || new Error("Gemini hiba.");
+}
+const CAT_HELP = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s, n]) => `${g.id}.${s} = ${g.name} / ${n}`)).join("\n");
+const CAT_ENUM = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s]) => g.id + "." + s));
+const CAT_RULES = `Category rules: chips, crisps, salty snacks, soft drinks (cola, Pepsi, Sprite, Fanta), energy drinks (Hell, Monster, Red Bull), chocolate, candy, ice cream, biscuits/cookies, pastries and desserts => etk.nasi. Beer, wine, spirits, sparkling wine => etk.alk. Coffee, tea, bread, dairy, meat, vegetables, fruit, mineral water, juice-free basics => etk.elel. Cleaning and personal hygiene products => haz.drog. Bottle deposit (betétdíj, visszaváltási díj) => etk.elel unless clearly for alcohol (then etk.alk). Fuel => koz.uza. Medicine, pharmacy => eg.gyogy. Use egyeb.egyeb only if nothing fits.`;
+function receiptSchema(){
+  return { type: "OBJECT", properties: {
+    shop: { type: "STRING" }, date: { type: "STRING", description: "YYYY-MM-DD or empty" },
+    currency: { type: "STRING", enum: CURS }, total: { type: "NUMBER", description: "grand total actually paid as printed" },
+    items: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, amount: { type: "NUMBER" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["name","amount","cat"] } }
+  }, required: ["shop","currency","total","items"] };
+}
+async function gemReceipt(files){
+  const prompt = `You read Hungarian shop receipts, invoices and online order confirmations. The ${files.length} attached file(s) belong to ONE purchase. If several photos are given they are consecutive parts of one long receipt and may overlap: include every product line exactly once.
+Return every purchased product line with its final line amount (quantity × unit price, after any line discount). Put discounts/coupons (KEDVEZMÉNY, kupon, akció) as separate lines with a NEGATIVE amount, or subtract them from the line they belong to. Ignore VAT summaries (ÁFA), payment method lines, card data, change (visszajáró), NAV/AP codes and loyalty points.
+Keep product names readable (expand obvious abbreviations, keep brand names, Hungarian language). shop = store or webshop name. date = purchase date. total = final amount paid.
+Categories (use the code):
+${CAT_HELP()}
+${CAT_RULES}`;
+  const parts = [{ text: prompt }, ...files.map(f => ({ inline_data: { mime_type: f.mime, data: f.b64 } }))];
+  return gemCall(parts, receiptSchema());
+}
+async function gemQuick(text){
+  const schema = { type: "OBJECT", properties: { amount: { type: "NUMBER" }, currency: { type: "STRING", enum: CURS }, name: { type: "STRING" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["amount","currency","name","cat"] };
+  return gemCall([{ text: `Parse this Hungarian expense note into amount, currency (Ft/forint/HUF => HUF, €/euro => EUR, $/dollar => USD; default HUF), a short item name (Hungarian, without the amount) and a category code.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nNote: "${text}"` }], schema);
+}
+async function gemClassify(names){
+  const schema = { type: "ARRAY", items: { type: "OBJECT", properties: { i: { type: "INTEGER" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["i","cat"] } };
+  return gemCall([{ text: `Assign a category code to each Hungarian household expense name.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nItems:\n${names.map((n, i) => i + ": " + n).join("\n")}` }], schema);
+}
+
+/* ================= gyors bevitel: helyi értelmezés ================= */
+function parseQuick(txt){
+  let s = " " + String(txt || "").replace(/ /g, " ") + " ";
+  let cur = "HUF";
+  if (/€|\beur(o|ó)?\b/i.test(s)) cur = "EUR"; else if (/\$|\busd\b|\bdoll(a|á)r/i.test(s)) cur = "USD";
+  const m = s.match(/[-+]?\d{1,3}(?:[ .]\d{3})+(?:,\d+)?|[-+]?\d+(?:[.,]\d+)?/);
+  if (!m) return { amt: null, cur, name: txt.trim() };
+  let num = m[0].trim();
+  if (/^\d{1,3}([ .]\d{3})+(,\d+)?$/.test(num)) num = num.replace(/[ .]/g, "").replace(",", ".");
+  else num = num.replace(",", ".");
+  const amt = parseFloat(num);
+  let name = (s.slice(0, m.index) + " " + s.slice(m.index + m[0].length))
+    .replace(/(^|\s)(ft|huf|forint|eur|euro|euró|usd|dollár|dollar)(?=\s|$|[.,;:])/gi, " ").replace(/[€$]/g, " ")
+    .replace(/\s+/g, " ").replace(/^[\s,.;:–-]+|[\s,.;:–-]+$/g, "").trim();
+  return { amt, cur, name };
+}
+
+/* ================= képek előkészítése ================= */
+function blobToB64(b){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); }); }
+async function loadBitmap(file){
+  try { return await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch (x) { return await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("A kép nem olvasható.")); i.src = URL.createObjectURL(file); }); }
+}
+async function prepFile(file){
+  if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
+    if (file.size > 15e6) throw new Error("A PDF túl nagy (max. 15 MB).");
+    return { kind: "pdf", mime: "application/pdf", blob: file, b64: await blobToB64(file), name: file.name, ext: "pdf" };
+  }
+  const bmp = await loadBitmap(file);
+  const w = bmp.width, h = bmp.height, long = Math.max(w, h), ratio = long / Math.min(w, h);
+  const maxLong = ratio > 2.2 ? 3000 : 2000;                // hosszú blokknál nagyobb felbontás kell
+  const sc = Math.min(1, maxLong / long);
+  const cv = document.createElement("canvas"); cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+  const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.82));
+  return { kind: "img", mime: "image/jpeg", blob, b64: await blobToB64(blob), url: URL.createObjectURL(blob), name: file.name, ext: "jpg" };
+}
+function pickFiles(inputId){
+  return new Promise(res => { const inp = $(inputId); inp.value = ""; inp.onchange = () => res([...inp.files]); inp.click(); });
+}
+
+/* ================= gyors bevitel drawer ================= */
+function openQuick(){
+  const st = { txt: "", p: null, sc: null, scManual: false, pay: LS.get("lastPay", "rev"), d: today(), who: "geza", busy: false, aiFor: "" };
+  const preview = () => {
+    const p = st.p;
+    if (!p || p.amt == null || isNaN(p.amt)) return `<p class="muted small" style="margin:0">Írd be egyben, pl. <b>1500 Ft Hell energiaital</b>, <b>12,90 € parkolás</b> vagy <b>4 990 Lidl</b>.</p>`;
+    const huf = p.cur === "HUF" ? p.amt : p.amt * fx(p.cur);
+    return `<div class="qprev"><span class="num big">${p.cur === "HUF" ? fmt(p.amt) : fmtN(p.amt, 2) + " " + curSym(p.cur) + ` <span class="muted small">≈ ${fmt(huf)}</span>`}</span><span class="nm">${esc(p.name || "(név nélkül)")}</span>${st.busy ? `<span class="muted small">AI besorolás…</span>` : ""}</div>`;
+  };
+  openDrawer(() => "Gyors költés", () => `
+    <div class="field"><label for="qT">Mit, mennyiért?</label><input class="inp" id="qT" autocomplete="off" autofocus placeholder="1500 Ft Hell energiaital" enterkeyhint="done"></div>
+    <div class="field"><label for="qSc">Kategória</label><select class="inp" id="qSc">${scOptions("egyeb.egyeb")}</select></div>
+    <div class="field"><label>Fizetés</label><div class="seg wrap" id="qPay">${PAY().map(([k, n]) => `<button data-dr="pay:${k}" aria-pressed="${st.pay === k}">${esc(n)}</button>`).join("")}</div></div>
+    <div class="two"><div class="field"><label for="qD">Dátum</label><input class="inp" id="qD" type="date" value="${st.d}"></div>
+      <div class="field"><label for="qW">Kié</label><select class="inp" id="qW"><option value="geza">Enyém</option><option value="reka">Rékáé</option></select></div></div>
+    <div class="actions"><button class="btn primary" data-dr="save">${ICON.check} Mentés</button></div>`, preview);
+  let tm = null;
+  const upd = () => {
+    st.txt = $("#qT").value; st.p = parseQuick(st.txt);
+    if (!st.scManual) { const g = st.p.name ? guessSc(st.p.name) : null; if (g) { st.sc = g; $("#qSc").value = g; } }
+    DR.refresh();
+    clearTimeout(tm);
+    if (!st.scManual && st.p.name && st.p.name.length > 2 && !guessSc(st.p.name) && gemKey()) tm = setTimeout(aiCat, 900);
+  };
+  const aiCat = async () => {
+    const txt = st.txt; if (st.aiFor === txt) return; st.aiFor = txt; st.busy = true; DR.refresh();
+    try { const r = await gemQuick(txt); if ($("#qT") && $("#qT").value === txt && !st.scManual && SUBS[r.cat]) { st.sc = r.cat; $("#qSc").value = r.cat; } }
+    catch (x) { if (!x.nokey) toast(x.message); }
+    finally { st.busy = false; if (DR.open) DR.refresh(); }
+  };
+  setTimeout(() => { const t = $("#qT"); if (!t) return; t.addEventListener("input", upd); t.focus();
+    t.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); DR.handler("save"); } }, true);
+    $("#qSc").addEventListener("change", e => { st.sc = e.target.value; st.scManual = true; }); }, 0);
+  DR.handler = (what) => {
+    if (what.startsWith("pay:")) { st.pay = what.slice(4); document.querySelectorAll("#qPay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); return; }
+    if (what === "save") {
+      const p = parseQuick($("#qT").value);
+      if (p.amt == null || isNaN(p.amt) || !p.amt) return toast("Nem találok összeget a szövegben.");
+      const sc = $("#qSc").value, d = $("#qD").value || today(), who = $("#qW").value;
+      const name = p.name || SUBS[sc].name;
+      learnSc(name, sc); LS.set("lastPay", st.pay);
+      const id = uid("k");
+      saveSpend(id, { d, who, pay: st.pay, cur: p.cur, shop: "", src: "quick", lines: [{ n: name, a: p.amt, sc }], at: nowIso() });
+      closeDrawer(); toast(`Rögzítve: ${name}, ${p.cur === "HUF" ? fmt(p.amt) : fmtN(p.amt, 2) + " " + curSym(p.cur)}`, () => { delete D().spend[id]; D().deleted["spend/" + id] = nowIso(); persist(); renderAll(); });
+    }
+  };
+}
+
+/* ================= blokk: rögzítés és ellenőrzés ================= */
+const RC = { files: [], busy: false };
+function openReceipt(){
+  RC.files = []; RC.busy = false;
+  const body = () => `
+    <p class="muted small" style="margin:0">Hosszú blokkot több részletben fotózz, kicsit átfedve. Feltölthetsz képet vagy PDF-et is (pl. webshop-számla). Egy vásárlás = egy feldolgozás.</p>
+    <div class="actions" style="justify-content:flex-start"><button class="btn primary" data-dr="cam">${ICON.camera} Fotó</button><button class="btn" data-dr="up">${ICON.upload} Kép / PDF</button></div>`;
+  const dyn = () => `
+    ${RC.files.length ? `<div class="thumbs">${RC.files.map((f, i) => `<div class="th">${f.kind === "img" ? `<img src="${f.url}" alt="${i + 1}. rész">` : `<div class="pdf">PDF<span>${esc(f.name.slice(0, 18))}</span></div>`}<span class="n">${i + 1}</span><button class="icon-btn" data-dr="rmf:${i}" aria-label="${i + 1}. rész törlése">${ICON.close}</button></div>`).join("")}</div>` : `<div class="empty small">Még nincs kép.</div>`}
+    ${RC.files.length && RC.files.every(f => f.kind === "img") ? `<button class="btn" data-dr="cam">${ICON.plus} Következő rész fotózása</button>` : ""}
+    <div class="actions">${RC.busy ? `<span class="muted"><span class="spin"></span> Feldolgozás… (10–30 mp)</span>` : `<button class="btn primary" data-dr="go" ${RC.files.length ? "" : "disabled"}>${ICON.check} Feldolgozás${gemKey() ? "" : " (nincs kulcs)"}</button><button class="btn ghost" data-dr="manual">Kézi kitöltés</button>`}</div>
+    ${gemKey() ? "" : `<p class="muted small" style="margin:0">A felismeréshez add meg a Gemini API-kulcsot a Beállításokban. Kulcs nélkül kézzel töltheted ki, a képek így is mentődnek.</p>`}`;
+  openDrawer(() => "Blokk beolvasása", body, dyn);
+  const add = async list => {
+    for (const f of list) { try { RC.files.push(await prepFile(f)); } catch (x) { toast(x.message); } }
+    if (DR.open) DR.refresh();
+  };
+  DR.handler = async (what) => {
+    if (RC.busy) return;
+    if (what === "cam") return add(await pickFiles("#camIn"));
+    if (what === "up") return add(await pickFiles("#upIn"));
+    if (what.startsWith("rmf:")) { RC.files.splice(+what.slice(4), 1); return DR.refresh(); }
+    if (what === "manual") return openSpendEdit(null, { files: RC.files, d: today(), lines: [{ n: "", a: null, sc: "etk.elel" }] });
+    if (what === "go") {
+      RC.busy = true; DR.refresh();
+      try {
+        const r = await gemReceipt(RC.files);
+        const lines = (r.items || []).filter(x => x && x.name).map(x => ({ n: x.name, a: Math.round((+x.amount || 0) * 100) / 100, sc: SUBS[x.cat] ? (guessScLearned(x.name) || x.cat) : (guessSc(x.name) || "egyeb.egyeb") }));
+        const d = /^\d{4}-\d\d-\d\d$/.test(r.date || "") && r.date <= today() ? r.date : today();
+        openSpendEdit(null, { files: RC.files, d, shop: r.shop || "", cur: CURS.includes(r.currency) ? r.currency : "HUF", total: +r.total || null, lines: lines.length ? lines : [{ n: "", a: null, sc: "etk.elel" }], src: "receipt" });
+      } catch (x) { RC.busy = false; if (DR.open) DR.refresh(); toast(x.message); console.warn(x); }
+    }
+  };
+}
+/* csak a saját szótár (a beépített kulcsszavaknál az AI pontosabb) */
+function guessScLearned(name){ const learn = D().learn || {}, full = fold(name); return learn[full] ? learn[full].sc : null; }
+
+function openSpendEdit(id, init){
+  const src = id ? JSON.parse(JSON.stringify(D().spend[id])) : null;
+  const st = src ? { ...src, files: null, lines: (src.lines || []).map(l => ({ ...l })) } : { who: "geza", pay: LS.get("lastPay", "rev"), cur: "HUF", shop: "", src: "receipt", ...init, lines: init.lines.map(l => ({ ...l })) };
+  const orig = st.lines.map(l => l.sc);
+  const sum = () => st.lines.reduce((a, l) => a + (+l.a || 0), 0);
+  const rows = () => st.lines.map((l, i) => `<div class="rline" data-i="${i}">
+      <input class="inp" data-rl="n" value="${esc(l.n)}" placeholder="tétel" autocomplete="off" aria-label="Tétel">
+      <input class="inp num" data-rl="a" value="${l.a ?? ""}" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Összeg">
+      <select class="inp" data-rl="sc" aria-label="Kategória">${scOptions(l.sc)}</select>
+      <button class="icon-btn" data-dr="rml:${i}" aria-label="Sor törlése">${ICON.trash}</button></div>`).join("");
+  const totals = () => {
+    const s = sum(), t = st.total, huf = st.cur === "HUF" ? s : s * fx(st.cur);
+    const byG = {}; for (const l of st.lines) { const g = SUBS[l.sc] ? SUBS[l.sc].name : "Egyéb"; byG[g] = (byG[g] || 0) + (+l.a || 0); }
+    const bad = t != null && Math.abs(t - s) > 0.5;
+    return `<div class="rtot ${bad ? "bad" : ""}"><span>Tételek összege</span><span class="num">${st.cur === "HUF" ? fmt(s) : fmtN(s, 2) + " " + curSym(st.cur) + " ≈ " + fmt(huf)}</span>
+      ${t != null ? `<span>A blokk végösszege</span><span class="num">${st.cur === "HUF" ? fmt(t) : fmtN(t, 2) + " " + curSym(st.cur)}</span>` : ""}
+      ${bad ? `<span class="warnline">${ICON.warn} Eltérés: ${st.cur === "HUF" ? fmt(s - t, { sign: true }) : fmtN(s - t, 2)}. Nézd át, nem maradt-e ki vagy duplázódott-e tétel.</span>` : ""}</div>
+      <div class="rgroups">${Object.entries(byG).sort((a, b) => b[1] - a[1]).map(([g, v]) => `<span class="chip">${esc(g)}: ${st.cur === "HUF" ? fmt(v) : fmtN(v, 2)}</span>`).join("")}</div>`;
+  };
+  openDrawer(() => id ? "Költés szerkesztése" : "Blokk ellenőrzése", () => `
+    <div class="two"><div class="field"><label for="eShop">Bolt</label><input class="inp" id="eShop" value="${esc(st.shop || "")}" autocomplete="off"></div>
+      <div class="field"><label for="eD">Dátum</label><input class="inp" id="eD" type="date" value="${esc(st.d || today())}"></div></div>
+    <div class="field"><label>Fizetés</label><div class="seg wrap" id="ePay">${PAY().map(([k, n]) => `<button data-dr="pay:${k}" aria-pressed="${st.pay === k}">${esc(n)}</button>`).join("")}</div></div>
+    <div class="two"><div class="field"><label for="eCur">Pénznem</label><select class="inp" id="eCur">${CURS.map(c => `<option ${c === st.cur ? "selected" : ""}>${c}</option>`).join("")}</select></div>
+      <div class="field"><label for="eW">Kié</label><select class="inp" id="eW"><option value="geza" ${st.who !== "reka" ? "selected" : ""}>Enyém</option><option value="reka" ${st.who === "reka" ? "selected" : ""}>Rékáé</option></select></div></div>
+    <div><div class="rline hd"><span>Tétel</span><span>Összeg</span><span>Kategória</span><span></span></div><div id="eRows">${rows()}</div>
+      <button class="btn sm" data-dr="addl" style="margin-top:6px">${ICON.plus} Sor</button></div>
+    ${src && src.files && src.files.length ? `<div class="actions" style="justify-content:flex-start">${src.files.map((f, i) => `<button class="btn sm" data-dr="view:${i}">${f.endsWith(".pdf") ? "PDF" : "Fotó"} ${i + 1}</button>`).join("")}</div>` : ""}
+    <div class="field"><label for="eNote">Megjegyzés</label><input class="inp" id="eNote" value="${esc(st.note || "")}" autocomplete="off"></div>`,
+    () => `${totals()}<div class="actions"><button class="btn primary" data-dr="save">${ICON.check} Mentés</button>${id ? `<button class="btn" data-dr="del">${ICON.trash} Törlés</button>` : ""}</div>`);
+  const rowsEl = () => $("#eRows");
+  setTimeout(() => {
+    const el = rowsEl(); if (!el) return;
+    el.addEventListener("input", e => { const r = e.target.closest(".rline"); if (!r) return; const i = +r.dataset.i, k = e.target.dataset.rl;
+      if (k === "a") { const v = parseAmt(e.target.value); st.lines[i].a = Number.isNaN(v) ? st.lines[i].a : v; }
+      if (k === "n") st.lines[i].n = e.target.value;
+      DR.refresh(); });
+    el.addEventListener("change", e => { const r = e.target.closest(".rline"); if (!r) return; if (e.target.dataset.rl === "sc") { st.lines[+r.dataset.i].sc = e.target.value; DR.refresh(); }
+      if (e.target.dataset.rl === "n" && !st.lines[+r.dataset.i].scSet) { const g = guessScLearned(e.target.value); if (g) { st.lines[+r.dataset.i].sc = g; r.querySelector("select").value = g; DR.refresh(); } } });
+    $("#eCur").addEventListener("change", e => { st.cur = e.target.value; DR.refresh(); });
+  }, 0);
+  const redraw = () => { rowsEl().innerHTML = rows(); DR.refresh(); };
+  DR.handler = async (what) => {
+    if (what.startsWith("pay:")) { st.pay = what.slice(4); document.querySelectorAll("#ePay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); return; }
+    if (what === "addl") { st.lines.push({ n: "", a: null, sc: st.lines.length ? st.lines[st.lines.length - 1].sc : "etk.elel" }); redraw(); const ins = rowsEl().querySelectorAll('input[data-rl="n"]'); ins[ins.length - 1].focus(); return; }
+    if (what.startsWith("rml:")) { st.lines.splice(+what.slice(4), 1); return redraw(); }
+    if (what.startsWith("view:")) return viewSpendFile(src.files[+what.slice(5)]);
+    if (what === "del") { closeDrawer(); return delSpend(id); }
+    if (what === "save") {
+      const lines = st.lines.filter(l => (l.n && l.n.trim()) || l.a).map(l => ({ n: (l.n || "").trim() || SUBS[l.sc].name, a: +l.a || 0, sc: l.sc }));
+      if (!lines.length || !lines.some(l => l.a)) return toast("Adj meg legalább egy tételt összeggel.");
+      st.lines.forEach((l, i) => { if (l.n && l.sc !== orig[i]) learnSc(l.n, l.sc); });
+      const sid = id || uid("k");
+      const rec = { d: $("#eD").value || today(), who: $("#eW").value, pay: st.pay, cur: st.cur, shop: $("#eShop").value.trim(), note: $("#eNote").value.trim(), lines, src: st.src || "receipt", total: st.total ?? null, at: src ? src.at : nowIso(), files: src ? src.files : [] };
+      if (!rec.note) delete rec.note; if (rec.total == null) delete rec.total;
+      LS.set("lastPay", st.pay);
+      const files = init && init.files || [];
+      closeDrawer();
+      if (files.length && ST.store && D().settings.keepPhotos !== false) {
+        const sub = "blokkok/" + mkOfDate(rec.d), names = [];
+        for (let i = 0; i < files.length; i++) {
+          const nm = `${rec.d}-${(rec.shop || "blokk").replace(/[^\w\-áéíóöőúüűÁÉÍÓÖŐÚÜŰ]+/g, "_").slice(0, 24)}-${sid.slice(-4)}-${i + 1}.${files[i].ext}`;
+          try { await ST.store.writeFile(sub, nm, files[i].blob, files[i].mime); names.push(sub + "/" + nm); } catch (x) { console.warn(x); toast("A kép mentése nem sikerült: " + x.message); }
+        }
+        rec.files = names;
+      }
+      saveSpend(sid, rec);
+      toast(`Mentve: ${rec.shop || lines[0].n}, ${fmt(spendHuf(D().spend[sid]))}`);
+    }
+  };
+}
+async function viewSpendFile(path){
+  if (!ST.store || !ST.store.fileUrl) return toast("A fájl csak mentett tárolással nyitható meg.");
+  const w = window.open("", "_blank");
+  try { const url = await ST.store.fileUrl(path); if (w) w.location = url; else location.href = url; }
+  catch (x) { if (w) w.close(); toast("Nem nyitható meg: " + x.message); }
+}
+
+/* ================= főlap: költések kártya ================= */
+function spendCard(k){
+  const L = spendsOf(k, "geza"), tot = L.reduce((a, s) => a + spendHuf(s), 0);
+  let junk = 0; for (const s of L) for (const l of s.lines || []) if (l.sc === "etk.nasi" || l.sc === "etk.alk") junk += (+l.a || 0) * (s.rate || 1);
+  return `<div class="card"><div class="hd"><h2>Költések</h2><span class="muted small">${L.length} db · ${fmt(tot)}${junk ? ` · nasi+alkohol ${fmt(junk)}` : ""}</span></div>
+    <div class="bd spendbtns"><button class="btn primary" data-act="receipt">${ICON.camera} Blokk</button><button class="btn" data-act="quick">${ICON.plus} Gyors bevitel</button></div>
+    ${L.length ? `<ul class="due spl">${L.slice(0, 6).map(s => { const top = (s.lines || []).slice().sort((a, b) => (b.a || 0) - (a.a || 0))[0] || {};
+      return `<li data-spend="${esc(s.id)}"><span class="day">${(s.d || "").slice(5).replace("-", ".")}.</span><span class="nm">${esc(s.shop || top.n || "Költés")}<span class="sub"><span class="chip">${esc(payName(s.pay))}</span> ${(s.lines || []).length > 1 ? (s.lines.length + " tétel") : esc(SUBS[top.sc] ? SUBS[top.sc].name : "")}${s.files && s.files.length ? " · fotó" : ""}</span></span><span class="amt num">${fmt(spendHuf(s))}</span></li>`; }).join("")}</ul>
+      ${L.length > 6 ? `<div class="bd" style="padding-top:0"><button class="btn sm ghost" data-act="gostats">Mind a(z) ${L.length} a Statisztika fülön</button></div>` : ""}` : ""}</div>`;
+}
+
 /* ================= UI basics ================= */
 const ICON = {
   prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>',
@@ -779,6 +1267,9 @@ const ICON = {
   folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>',
   cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18a4.5 4.5 0 01-.6-9 6 6 0 0111.6 1.6A3.8 3.8 0 0117.5 18z"/></svg>',
   card: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="vertical-align:-2px"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
 };
 let toastT = null;
@@ -798,7 +1289,7 @@ function snapshot(){ return JSON.stringify(S.data); }
 function withUndo(msg, fn){ const before = snapshot(); fn(); persist(); renderAll(); toast(msg, () => { S.data = normalize(JSON.parse(before)); stampAllChanged(); persist(); renderAll(); }); }
 function stampAllChanged(){ /* visszavonás után minden rekord frissebb legyen, mint a távoli */ const t = nowIso();
   const st = o => { if (o && typeof o === "object") o.u = t; };
-  st(D().settings); D().cats.forEach(st); D().items.forEach(st);
+  st(D().settings); D().cats.forEach(st); D().items.forEach(st); Object.values(D().spend || {}).forEach(st); Object.values(D().statmap || {}).forEach(st);
   for (const mo of Object.values(D().months)) { st(mo.meta); Object.values(mo.lines).forEach(st); Object.values(mo.extras).forEach(st); }
   for (const g of ["accounts","stocks","crypto","debts","snaps"]) Object.values(D().assets[g]).forEach(st);
 }
@@ -811,7 +1302,7 @@ function applyTheme(){ const t = LS.get("theme", "auto"); if (t === "auto") docu
 /* ================= tabs ================= */
 function showApp(on){
   $("#tabs").hidden = !on; $("#view-setup").hidden = on;
-  for (const v of ["month","year","assets","items","settings"]) $("#view-" + v).hidden = !on || S.tab !== v;
+  for (const v of ["month","year","stats","assets","items","settings"]) $("#view-" + v).hidden = !on || S.tab !== v;
 }
 function setTab(t){
   S.tab = t; LS.set("tab", t);
@@ -823,7 +1314,7 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest("button[d
 function renderAll(){
   if (!S.data) return;
   storeLabel();
-  const f = { month: renderMonth, year: renderYear, assets: renderAssets, items: renderItems, settings: renderSettings }[S.tab];
+  const f = { month: renderMonth, year: renderYear, stats: renderStats, assets: renderAssets, items: renderItems, settings: renderSettings }[S.tab];
   if (f) f();
   if (DR.open) DR.refresh && DR.refresh();
 }
@@ -879,6 +1370,7 @@ function debtLogHtml(dt){
   const rows = [];
   for (const [lid, l] of Object.entries(dt.log || {})) rows.push({ at: l.at, txt: `${l.t === "fee" ? "Díj" : "Költés"}${l.note ? ": " + esc(l.note) : ""}`, amt: +l.amt, lid, old: (l.at || "") <= base });
   for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.debt === dt.id) rows.push({ at: x.at || x.u, txt: esc(x.name), amt: -(+(x.a ?? x.p) || 0) });
+  for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza") rows.push({ at: s.at, txt: "Költés: " + esc(s.shop || (s.lines[0] || {}).n || ""), amt: spendHuf(s), old: (s.at || "") <= base });
   if (!rows.length) return "";
   rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
   return `<div><div class="k" style="margin-bottom:6px">Napló</div>${rows.slice(0, 12).map(r => `<div style="display:flex;gap:8px;align-items:center;font-size:13.5px;padding:4px 0;border-top:1px solid var(--line-2);${r.old ? "opacity:.5" : ""}"><span class="muted num" style="font-size:12px">${r.at ? new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" }) : ""}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.txt}</span><span class="num ${r.amt > 0 ? "neg" : "pos"}">${r.amt > 0 ? "+" : "−"}${fmt(Math.abs(r.amt), { noUnit: true })}</span>${r.lid ? `<button class="icon-btn" data-dr="rm:${r.lid}" aria-label="Törlés">${ICON.trash}</button>` : ""}</div>`).join("")}${rows.some(r => r.old) ? `<p class="muted small" style="margin:6px 0 0">A halvány tételek a legutóbb beírt egyenleg előttiek, azokat már nem számolom.</p>` : ""}</div>`;
@@ -924,6 +1416,7 @@ function renderMonth(){
       <div class="calc">
         <span>Revolut egyenleg</span><span class="num">${c.revolut == null ? "–" : fmt(c.revolut)}</span>
         <span>Revolutról még fizetendő (${c.revOpenN} tétel)</span><span class="num">−${fmt(c.revOpen)}</span>
+        ${c.spendRev.n ? `<span>Költés az egyenleg megadása óta (${c.spendRev.n})</span><span class="num">−${fmt(c.spendRev.sum)}</span>` : ""}
       </div>
       <div class="balrow"><label for="revBal">Revolut most:</label><input id="revBal" inputmode="numeric" autocomplete="off" data-f="rev-bal" placeholder="egyenleg Ft-ban" value="${c.revolut == null ? "" : c.revolut}"></div>
       ${c.revolut == null ? `<div class="hint">Írd be a Revolut aktuális egyenlegét, és kiszámolom a keretet.</div>` : mo.meta.revAt ? `<div class="hint">Egyenleg megadva: ${new Date(mo.meta.revAt).toLocaleString("hu-HU", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>` : ""}
@@ -936,6 +1429,7 @@ function renderMonth(){
         : `<div class="kpi"><div class="k">Réka</div><div class="v muted" style="font-size:15px;font-weight:500">${ICON.check.replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px;color:var(--good)"')} ${fmt(c.rekaPaid)} utalva</div><div class="s rk"><span>${mo.meta.rekaAt ? new Date(mo.meta.rekaAt).toLocaleDateString("hu-HU", { month: "short", day: "numeric" }) : ""}</span><button class="btn sm ghost" data-act="reka">Módosít</button></div></div>`}
       ${(() => { const t = assetTotals(); return `<div class="kpi"><div class="k">Teljes vagyon</div><div class="v">${fmt(t.total)}</div><div class="s">Revolut ${fmt(t.revHuf, { noUnit: true })} + megtakarítás ${fmt(t.total - t.revHuf, { noUnit: true })}</div></div>`; })()}
     </div>`;
+  h += spendCard(k);
   // due list
   const open = c.lines.filter(l => !isIncomeCat(l.cat) && remaining(l) > 0).sort((a,b) => (b.rev - a.rev) || dueSortKey(a) - dueSortKey(b) || a.name.localeCompare(b.name, "hu"));
   const openSum = open.reduce((s, l) => s + remaining(l), 0);
@@ -995,10 +1489,14 @@ $("#view-month").addEventListener("click", e => {
     if (act === "reka") return openReka(S.mk);
     if (act === "px") return refreshPrices(false);
     if (act === "debtadd") return openDebtEntry(a.dataset.id);
+    if (act === "receipt") return openReceipt();
+    if (act === "quick") return openQuick();
+    if (act === "gostats") { S.sf.per = "cur"; return setTab("stats"); }
     if (act === "mclose") return openClose(S.mk);
     if (act === "mreopen") { const mo = month(S.mk); mo.meta = stamp({ ...mo.meta, closed: false }); persist(); return renderAll(); }
     return;
   }
+  const sp = e.target.closest("[data-spend]"); if (sp) return openSpendEdit(sp.dataset.spend);
   const dr = e.target.closest("[data-debt]"); if (dr) return openDebtEntry(dr.dataset.debt);
   const r = e.target.closest("[data-line]");
   if (r) { const [kind, id] = r.dataset.line.split(/:(.*)/s); openLine(S.mk, kind, id); }
@@ -1174,7 +1672,8 @@ document.addEventListener("change", e => {
   if (parts[0] === "set") {
     const st = D().settings, fld = parts[1];
     if (["rekaPct","rekaRound","startDay","fxUSD","fxEUR"].includes(fld)) { const v = numv(); if (v === undefined) return; if (v == null) delete st[fld]; else st[fld] = v; }
-    else st[fld] = el.value.trim();
+    else if (el.type === "checkbox") st[fld] = el.checked;
+    else { st[fld] = el.value.trim(); if (fld === "gemKey") LS.set("gemModels", null); }
     stamp(st); persist(); return renderAll();
   }
 });
@@ -1437,6 +1936,13 @@ function renderSettings(){
     <div class="field"><label for="sFh">Alpha Vantage API-kulcs (részvényárakhoz)</label><input class="inp" id="sFh" data-f="set|avKey" value="${esc(st.avKey || "")}" autocomplete="off" placeholder="ingyenes: alphavantage.co/support/#api-key"></div>
     <span class="muted small">Deviza: EKB (Frankfurter), kripto: CoinGecko, részvény: Alpha Vantage (napi 25 lekérés az ingyenes kulccsal, ezért óránként legfeljebb egyszer frissít magától). Üres kézi mező esetén az élő árfolyam számít.</span>
   </div></div>
+  <div class="card"><div class="hd"><h2>Blokkolvasás (Google Gemini)</h2></div><div class="bd">
+    <div class="field"><label for="sGk">Gemini API-kulcs</label><input class="inp" id="sGk" data-f="set|gemKey" value="${esc(st.gemKey || "")}" autocomplete="off" placeholder="aistudio.google.com → Get API key"></div>
+    <div class="field"><label for="sGm">Modell (üresen: automatikus)</label><input class="inp" id="sGm" data-f="set|gemModel" value="${esc(st.gemModel || "")}" autocomplete="off" placeholder="${esc(LS.get("gemLast", "") || "a legújabb Flash modell")}"></div>
+    <div class="actions" style="justify-content:flex-start"><button class="btn" data-act="gemtest">Kapcsolat tesztelése</button></div>
+    <label class="toggle"><input type="checkbox" data-f="set|keepPhotos" ${st.keepPhotos === false ? "" : "checked"}> Blokkfotók mentése a OneDrive-ra <span class="muted small">(${esc(st.folder || "Budget")}/blokkok/)</span></label>
+    <span class="muted small">A kulcs a ${FILE} fájlban tárolódik, így minden eszközödön működik. Az AI Studio projekthez ne kapcsolj számlázást: így legfeljebb az ingyenes keret fogy el. Az ingyenes szinten a Google a beküldött képeket a szolgáltatás fejlesztésére használhatja.</span>
+  </div></div>
   <div class="card"><div class="hd"><h2>Adatok és megjelenés</h2></div><div class="bd">
     <div class="actions"><button class="btn" data-act="expJson">JSON-mentés letöltése</button><button class="btn" data-act="expCsv">CSV (Excelhez)</button><button class="btn" data-act="impJson">Betöltés JSON-ból…</button></div>
     <div class="field"><label>Téma</label><div class="seg">${[["auto","Automatikus"],["light","Világos"],["dark","Sötét"]].map(([k, n]) => `<button data-act="theme" data-v="${k}" aria-pressed="${theme === k}">${n}</button>`).join("")}</div></div>
@@ -1451,6 +1957,7 @@ $("#view-settings").addEventListener("click", async e => {
   if (act === "expJson") return download(`budget-${today()}.json`, payload());
   if (act === "expCsv") return exportCsv();
   if (act === "impJson") { const d = await readJsonFile(); if (!d) return; withUndo("Betöltve és összefésülve.", () => { S.data = normalize(mergeData(S.data, normalize(d))); }); return; }
+  if (act === "gemtest") { a.disabled = true; try { const l = await gemModels(true); toast(l.length ? "Rendben. Modell: " + ((D().settings.gemModel || "").trim() || l[0]) : "A kulcs jó, de nincs Flash modell."); } catch (x) { toast(x.message); } a.disabled = false; return; }
   if (act === "toLocal") return pickDir();
   if (act === "toGraph") return connectGraph();
   if (act === "logout") return msLogout();
@@ -1510,7 +2017,7 @@ async function openStore(store){
 function startApp(){
   S.mk = S.mk || currentMk();
   if (!ST.store) status("nem ment", "demo");
-  S.tab = LS.get("tab", "month"); if (!["month","year","assets","items","settings"].includes(S.tab)) S.tab = "month";
+  S.tab = LS.get("tab", "month"); if (!["month","year","stats","assets","items","settings"].includes(S.tab)) S.tab = "month";
   setTab(S.tab);
   const px = D().assets.px; if (!px || !px.at || Date.now() - Date.parse(px.at) > 3600e3) refreshPrices(true);
 }
@@ -1533,6 +2040,221 @@ async function boot(){
   showSetup("start");
 }
 boot();
+
+/* ================= statisztika ================= */
+S.sf = S.sf || { per: "6", from: null, to: null, src: { plan: true, geza: true, reka: true }, ns: false, q: "", g: "", open: {}, sort: "d" };
+function statMonths(){
+  const set = new Set(monthKeys().filter(k => k <= currentMk()));
+  for (const s of spends()) set.add(mkOfDate(s.d));
+  return [...set].sort();
+}
+function statRange(){
+  const f = S.sf, cur = currentMk(), all = statMonths();
+  if (f.per === "custom") { const a = f.from || all[0] || cur, b = f.to || cur; return a <= b ? [a, b] : [b, a]; }
+  if (f.per === "cur") return [cur, cur];
+  if (f.per === "prev") { const p = mkAdd(cur, -1); return [p, p]; }
+  if (f.per === "year") { const y = mkParse(cur).y; return [y + "-01", cur]; }
+  if (f.per === "all") return [all[0] || cur, cur];
+  const n = +f.per || 6; return [mkAdd(cur, -(n - 1)), cur];
+}
+function monthsIn(a, b){ const out = []; for (let k = a; k <= b; k = mkAdd(k, 1)) out.push(k); return out; }
+/* minden költés egy sorban: tervezett tételek (tény, nyitottnál a terv), eseti tételek, rögzített költések */
+function statRows(){
+  const f = S.sf, [a, b] = statRange(), cur = currentMk(), q = fold(f.q);
+  const rows = [];
+  for (const k of monthsIn(a, b)) {
+    const mo = month(k);
+    if (mo && f.src.plan && k <= cur) {
+      for (const l of monthLines(k)) {
+        if (isIncomeCat(l.cat)) continue;
+        const v = expA(l); if (!v) continue;
+        const it = l.kind === "item" ? itemById(l.id) : null;
+        const sc = it ? itemSc(it) : extraSc(mo.extras[l.id] || {});
+        rows.push({ k, d: null, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, p: l.kind === "item" ? l.p : null, kind: l.kind, lid: l.id, open: !l.done && l.a == null });
+      }
+      if (f.ns) { const c = calc(k), rv = c.rekaPaid ?? (k < cur ? c.reka : 0); if (rv) rows.push({ k, d: null, src: "plan", who: "plan", sc: "reka.reka", name: "Rékának utalás", shop: "", pay: "raif", amt: rv }); }
+    }
+  }
+  for (const s of spends()) {
+    const k = mkOfDate(s.d), who = s.who || "geza";
+    if (k < a || k > b || !f.src[who]) continue;
+    for (const l of s.lines || []) rows.push({ k, d: s.d, src: "spend", who, sc: l.sc, name: l.n, shop: s.shop || "", pay: s.pay, amt: (+l.a || 0) * (s.rate || 1), sid: s.id, note: s.note || "" });
+  }
+  return rows.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!q || fold(r.name + " " + r.shop + " " + (r.note || "")).includes(q)));
+}
+const sumBy = (rows, key) => { const m = {}; for (const r of rows) { const k = typeof key === "function" ? key(r) : r[key]; m[k] = (m[k] || 0) + r.amt; } return m; };
+function hbars(entries, total, opt){
+  opt = opt || {};
+  const max = Math.max(1, ...entries.map(e => e[1]));
+  return `<div class="hb">${entries.map(([id, v, label, extra]) => `<div class="hbr ${opt.click ? "clk" : ""} ${extra && extra.sub ? "sub" : ""}" ${opt.click ? `data-hb="${esc(id)}" tabindex="0" role="button"` : ""} title="${esc(label)}: ${fmt(v)}${total ? " (" + (v / total * 100).toFixed(1) + "%)" : ""}">
+      <span class="hl">${extra && extra.caret != null ? `<span class="caret">${extra.caret ? "▾" : "▸"}</span>` : ""}${esc(label)}</span>
+      <span class="hbar"><i style="width:${(Math.max(v, 0) / max * 100).toFixed(1)}%;${extra && extra.color ? "background:" + extra.color : ""}"></i></span>
+      <span class="hv num">${fmt(v, { noUnit: true })}</span><span class="hp num">${total ? (v / total * 100).toFixed(0) + "%" : ""}</span></div>`).join("")}</div>`;
+}
+function renderStats(){
+  const v = $("#view-stats"), f = S.sf, [a, b] = statRange(), ms = monthsIn(a, b), cur = currentMk(), all = statMonths();
+  const rows = statRows();
+  const spendRows = rows.filter(r => !(SUBS[r.sc] || {}).ns);
+  const total = spendRows.reduce((s, r) => s + r.amt, 0);
+  const nM = ms.length || 1;
+  const etk = spendRows.filter(r => groupOf(r.sc) === "etk").reduce((s, r) => s + r.amt, 0);
+  const junkRows = spendRows.filter(r => r.sc === "etk.nasi" || r.sc === "etk.alk"), junk = junkRows.reduce((s, r) => s + r.amt, 0);
+  const own = rows.filter(r => r.src === "spend");
+  const nRec = new Set(own.map(r => r.sid)).size;
+  // lefedettség: neked maradt (terv) vs saját rögzített költés
+  let left = 0; for (const k of ms) { const c = month(k) && k <= cur ? calc(k) : null; if (c) left += Math.max(c.bal.p - (c.rekaPaid ?? c.reka), 0); }
+  const ownG = spends().filter(s => (s.who || "geza") === "geza" && ms.includes(mkOfDate(s.d))).reduce((x, s) => x + spendHuf(s), 0);
+  const rekaT = ms.reduce((x, k) => { const c = month(k) && k <= cur ? calc(k) : null; return x + (c ? (c.rekaPaid ?? (k < cur ? c.reka : 0)) : 0); }, 0);
+  const rekaS = spends().filter(s => s.who === "reka" && ms.includes(mkOfDate(s.d))).reduce((x, s) => x + spendHuf(s), 0);
+  const opt = (k, sel) => `<option value="${k}" ${k === sel ? "selected" : ""}>${mkName(k)}</option>`;
+  let h = `<div class="mhead"><h1>Statisztika</h1><span class="per">${a === b ? mkName(a) : mkName(a) + " – " + mkName(b)} · ${nM} hónap</span></div>
+  <div class="sfbar">
+    <select class="inp" data-sf="per" aria-label="Időszak">${[["cur","Aktuális hónap"],["prev","Előző hónap"],["3","Utolsó 3 hónap"],["6","Utolsó 6 hónap"],["12","Utolsó 12 hónap"],["year","Idei év"],["all","Teljes időszak"],["custom","Egyedi…"]].map(([k, n]) => `<option value="${k}" ${f.per === k ? "selected" : ""}>${n}</option>`).join("")}</select>
+    ${f.per === "custom" ? `<select class="inp" data-sf="from" aria-label="Ettől">${all.map(k => opt(k, a)).join("")}</select><select class="inp" data-sf="to" aria-label="Eddig">${all.map(k => opt(k, b)).join("")}</select>` : ""}
+    <select class="inp" data-sf="g" aria-label="Főcsoport"><option value="">Minden csoport</option>${TAX.filter(g => f.ns || !g.ns).map(g => `<option value="${g.id}" ${f.g === g.id ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select>
+    <input class="inp grow" type="search" data-sf="q" value="${esc(f.q)}" placeholder="Keresés: tétel, bolt (pl. Hell, Lidl)" aria-label="Keresés">
+    <div class="chips">${[["plan","Tervezett tételek"],["geza","Saját költés"],["reka","Réka költése"]].map(([k, n]) => `<button class="chipbtn" data-sfsrc="${k}" aria-pressed="${!!f.src[k]}">${n}</button>`).join("")}
+      <button class="chipbtn" data-sfns aria-pressed="${f.ns}">Nem költés is</button></div>
+  </div>`;
+  h += `<div class="kpis k5">
+    <div class="kpi"><div class="k">Összes költés</div><div class="v">${fmt(total)}</div><div class="s">${nM > 1 ? "havi átlag " + fmt(total / nM) : spendRows.length + " tétel"}</div></div>
+    <div class="kpi"><div class="k">Nasi és alkohol</div><div class="v">${fmt(junk)}</div><div class="s">${etk ? (junk / etk * 100).toFixed(0) + "% az étkezésből" : "–"}${nM > 1 ? " · havi " + fmt(junk / nM) : ""}</div></div>
+    <div class="kpi"><div class="k">Rögzített költés</div><div class="v">${fmt(own.reduce((s, r) => s + r.amt, 0))}</div><div class="s">${nRec} blokk / bevitel</div></div>
+    <div class="kpi"><div class="k">Neked maradt / rögzítve</div><div class="v">${left ? Math.round(ownG / left * 100) + "%" : "–"}</div><div class="s">${fmt(ownG)} / ${fmt(left)}</div></div>
+    <div class="kpi"><div class="k">Rékának utalva / részletezve</div><div class="v">${rekaT ? Math.round(rekaS / rekaT * 100) + "%" : "–"}</div><div class="s">${fmt(rekaS)} / ${fmt(rekaT)}${rekaT > rekaS ? " · nem részletezett " + fmt(rekaT - rekaS) : ""}</div></div>
+  </div>`;
+  // mire megy
+  const byG = sumBy(spendRows.concat(f.ns ? rows.filter(r => (SUBS[r.sc] || {}).ns) : []), r => groupOf(r.sc));
+  const gEntries = Object.entries(byG).sort((x, y) => y[1] - x[1]);
+  const bars = [];
+  for (const [g, val] of gEntries) {
+    const isOpen = !!f.open[g], gg = taxGroup(g);
+    bars.push([g, val, gg.name, { caret: isOpen }]);
+    if (isOpen) { const bs = sumBy(rows.filter(r => groupOf(r.sc) === g), "sc"); for (const [sc, sv] of Object.entries(bs).sort((x, y) => y[1] - x[1])) bars.push(["sc:" + sc, sv, SUBS[sc].name, { sub: true, color: "color-mix(in srgb,var(--accent) 55%,var(--surface))" }]); }
+  }
+  h += `<div class="sgrid"><div class="card"><div class="hd"><h2>Mire megy a pénz</h2><span class="muted small">kattints egy csoportra a részletekhez</span></div><div class="bd">${gEntries.length ? hbars(bars, total, { click: true }) : `<div class="empty">Nincs adat a szűrésre.</div>`}</div>
+    ${f.selSc ? scDetail(rows, f.selSc) : ""}</div>`;
+  // havi trend
+  h += `<div class="card"><div class="hd"><h2>Havi trend</h2><span class="muted small">főcsoportonként</span></div><div class="bd"><div class="chart" id="stTrend"></div></div>
+    <div class="legend">${STACK.map((_, i) => `<span><i style="background:${stackColor(i)}"></i>${esc(stackName(i))}</span>`).join("")}</div></div>`;
+  // nasi és alkohol
+  h += `<div class="card"><div class="hd"><h2>Nasi és alkohol havonta</h2><span class="muted small">${nM > 1 ? "átlag " + fmt(junk / nM) + "/hó" : ""}</span></div><div class="bd"><div class="chart" id="stJunk"></div></div>
+    <div class="legend"><span><i style="background:${cssVar("--s2")}"></i>Nasi és üdítő</span><span><i style="background:${cssVar("--s7")}"></i>Alkohol</span></div>
+    ${junkRows.length ? `<div class="bd" style="padding-top:0"><div class="k" style="margin-bottom:6px">Leggyakoribb</div>${topTable(junkRows, "name", 6)}</div>` : ""}</div>`;
+  // terv és tény
+  const planRows = rows.filter(r => r.src === "plan" && r.p != null);
+  if (planRows.length) {
+    const pg = {}; for (const r of planRows) { const g = groupOf(r.sc); pg[g] = pg[g] || { p: 0, a: 0 }; pg[g].p += r.p; pg[g].a += r.amt; }
+    h += `<div class="card"><div class="hd"><h2>Tervezett tételek: terv és tény</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Csoport</th><th>Terv</th><th>Tény / várható</th><th>Eltérés</th></tr></thead><tbody>
+      ${Object.entries(pg).sort((x, y) => y[1].a - x[1].a).map(([g, o]) => `<tr><td>${esc(taxGroup(g).name)}</td><td class="num">${fmt(o.p, { noUnit: true })}</td><td class="num">${fmt(o.a, { noUnit: true })}</td><td class="num ${o.a > o.p ? "neg" : o.a < o.p ? "pos" : ""}">${fmt(o.a - o.p, { sign: true, noUnit: true })}</td></tr>`).join("")}</tbody></table></div></div>`;
+  }
+  // boltok, tételek, fizetés
+  const sp = rows.filter(r => r.src === "spend");
+  if (sp.length) {
+    const shops = {}; for (const s of spends()) { const k = mkOfDate(s.d); if (k < a || k > b || !f.src[s.who || "geza"] || !s.shop) continue; const o = shops[s.shop] = shops[s.shop] || { n: 0, v: 0 }; o.n++; o.v += spendHuf(s); }
+    h += `<div class="card"><div class="hd"><h2>Boltok</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Bolt</th><th>Alkalom</th><th>Összeg</th></tr></thead><tbody>${Object.entries(shops).sort((x, y) => y[1].v - x[1].v).slice(0, 10).map(([n, o]) => `<tr><td><a href="#" data-sq="${esc(n)}">${esc(n)}</a></td><td class="num">${o.n}</td><td class="num">${fmt(o.v, { noUnit: true })}</td></tr>`).join("") || `<tr><td colspan="3" class="muted">Nincs bolt megadva.</td></tr>`}</tbody></table></div></div>`;
+    h += `<div class="card"><div class="hd"><h2>Leggyakoribb tételek</h2></div><div class="bd">${topTable(sp, "name", 10)}</div></div>`;
+    const byPay = sumBy(sp, "pay");
+    h += `<div class="card"><div class="hd"><h2>Fizetési mód</h2><span class="muted small">rögzített költések</span></div><div class="bd">${hbars(Object.entries(byPay).sort((x, y) => y[1] - x[1]).map(([k, val]) => [k, val, payName(k)]), sp.reduce((s, r) => s + r.amt, 0))}</div></div>`;
+  }
+  h += `</div>`;
+  // tételek listája
+  const list = rows.slice().sort((x, y) => S.sf.sort === "a" ? y.amt - x.amt : ((y.d || y.k + "-99").localeCompare(x.d || x.k + "-99")));
+  h += `<div class="card" style="margin-top:16px"><div class="hd"><h2>Tételek</h2><span class="muted small">${list.length} sor · ${fmt(list.reduce((s, r) => s + r.amt, 0))}</span><span class="spacer" style="flex:1"></span>
+    <div class="seg"><button data-sfsort="d" aria-pressed="${S.sf.sort !== "a"}">Dátum</button><button data-sfsort="a" aria-pressed="${S.sf.sort === "a"}">Összeg</button></div><button class="btn sm" data-act="stcsv">CSV</button></div>
+    <div class="tblwrap" style="max-height:60vh"><table class="t"><thead><tr><th>Dátum</th><th class="tx">Tétel</th><th class="tx">Bolt</th><th class="tx">Kategória</th><th class="tx">Forrás</th><th>Összeg</th></tr></thead><tbody>
+    ${list.slice(0, 400).map(r => `<tr ${r.sid ? `data-sid="${esc(r.sid)}" class="clk"` : ""}><td class="num">${r.d ? r.d.slice(5).replace("-", ".") + "." : mkShort(r.k)}</td><td class="tx nm">${esc(r.name)}</td><td class="tx">${esc(r.shop)}</td><td class="tx">${esc((SUBS[r.sc] || {}).name || "")}</td><td class="tx"><span class="chip">${r.src === "plan" ? "terv" : r.who === "reka" ? "Réka" : payName(r.pay)}</span></td><td class="num">${fmt(r.amt, { noUnit: true })}</td></tr>`).join("")}
+    ${list.length > 400 ? `<tr><td colspan="6" class="muted">… és még ${list.length - 400} sor (szűkíts, vagy töltsd le CSV-ben).</td></tr>` : ""}</tbody></table></div></div>`;
+  // besorolás és import
+  h += `<div class="sgrid" style="margin-top:16px"><div class="card"><div class="hd"><h2>A tervezett tételek besorolása</h2></div><div class="bd muted small" style="padding-bottom:6px">A Hónap fül felosztása nem változik, ez csak a statisztikát érinti.</div><div class="smap">
+    ${items().filter(it => !isIncomeCat(it.cat)).map(it => `<label class="${it.off ? "off" : ""}"><span>${esc(it.name)}</span><select class="inp" data-smap="${esc(it.id)}">${scOptions(itemSc(it), true)}</select></label>`).join("")}</div></div>
+    <div class="card"><div class="hd"><h2>Eseti tételek és import</h2></div><div class="bd" style="display:grid;gap:12px">
+      <p class="muted small" style="margin:0">${(() => { const n = extrasUnclassified().length; return n ? `${n} eseti tétel még automatikus (kulcsszavas) besorolású.` : "Minden eseti tétel be van sorolva."; })()}</p>
+      <div class="actions" style="justify-content:flex-start"><button class="btn" data-act="aiextras" ${extrasUnclassified().length ? "" : "disabled"}>Eseti tételek besorolása AI-val</button><button class="btn" data-act="rekaimp">Réka exportjának betöltése…</button></div>
+      <p class="muted small" style="margin:0">Réka oldala egy <code>.json</code> fájlt ad. Ugyanazt többször is betöltheted, nem duplázódik.</p>
+      ${extrasList()}
+    </div></div></div>`;
+  v.innerHTML = h;
+  // diagramok
+  const cols = ms.map(k => { const vals = {}; for (const r of spendRows) if (r.k === k) { const i = stackOf(groupOf(r.sc)); vals[i] = (vals[i] || 0) + r.amt; } return { label: mkShort(k), full: mkName(k), cur: k === cur, values: vals }; });
+  const series = STACK.map((_, i) => ({ id: i, name: stackName(i), color: stackColor(i) }));
+  if (ms.length) stackedBars($("#stTrend"), cols, series, { id: "st", label: "Havi költés főcsoportonként" });
+  const jc = ms.map(k => { const vals = { n: 0, a: 0 }; for (const r of junkRows) if (r.k === k) vals[r.sc === "etk.alk" ? "a" : "n"] += r.amt; return { label: mkShort(k), full: mkName(k), cur: k === cur, values: vals }; });
+  if (ms.length) stackedBars($("#stJunk"), jc, [{ id: "n", name: "Nasi és üdítő", color: cssVar("--s2") }, { id: "a", name: "Alkohol", color: cssVar("--s7") }], { id: "sj", label: "Nasi és alkohol havonta" });
+}
+function topTable(rows, key, n){
+  const m = {}; for (const r of rows) { const k = (r[key] || "").trim(); if (!k) continue; const o = m[fold(k)] = m[fold(k)] || { name: k, n: 0, v: 0 }; o.n++; o.v += r.amt; }
+  const e = Object.values(m).sort((x, y) => y.n - x.n || y.v - x.v).slice(0, n);
+  return e.length ? `<table class="t compact"><tbody>${e.map(o => `<tr><td><a href="#" data-sq="${esc(o.name)}">${esc(o.name)}</a></td><td class="num muted">${o.n}×</td><td class="num">${fmt(o.v, { noUnit: true })}</td></tr>`).join("")}</tbody></table>` : `<p class="muted small">–</p>`;
+}
+function scDetail(rows, sc){
+  const rs = rows.filter(r => r.sc === sc); if (!rs.length) return "";
+  return `<div class="bd" style="padding-top:0"><div class="k" style="margin-bottom:6px">${esc(SUBS[sc].name)}: leggyakoribb tételek</div>${topTable(rs, "name", 8)}</div>`;
+}
+function extrasUnclassified(){ const out = []; for (const k of monthKeys()) for (const [id, x] of Object.entries(month(k).extras)) if (!x.sc && !x.debt && x.name) out.push([k, id, x]); return out; }
+function extrasList(){
+  const L = []; for (const k of monthKeys().slice().reverse()) for (const [id, x] of Object.entries(month(k).extras)) if (!x.debt && x.name) L.push([k, id, x]);
+  if (!L.length) return "";
+  return `<div class="smap">${L.slice(0, 40).map(([k, id, x]) => `<label><span>${esc(x.name)} <span class="muted small">${mkShort(k)}</span></span><select class="inp" data-xsc="${k}|${esc(id)}">${scOptions(extraSc(x), true)}</select></label>`).join("")}</div>`;
+}
+$("#view-stats").addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.sf) { S.sf[t.dataset.sf] = t.value; if (t.dataset.sf === "per" && t.value === "custom") { const [a, b] = statRange(); S.sf.from = a; S.sf.to = b; } if (t.dataset.sf === "g") S.sf.selSc = null; return renderStats(); }
+  if (t.dataset.smap) { D().statmap = { ...(D().statmap || {}), [t.dataset.smap]: { sc: t.value, u: nowIso() } }; persist(); return renderStats(); }
+  if (t.dataset.xsc) { const [k, id] = t.dataset.xsc.split("|"); const x = month(k).extras[id]; month(k).extras[id] = stamp({ ...x, sc: t.value }); learnSc(x.name, t.value); persist(); return renderStats(); }
+});
+let sqT;
+$("#view-stats").addEventListener("input", e => { if (e.target.dataset.sf === "q") { S.sf.q = e.target.value; clearTimeout(sqT); sqT = setTimeout(() => { renderStats(); const i = document.querySelector('[data-sf="q"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 300); } });
+$("#view-stats").addEventListener("click", async e => {
+  const t = e.target;
+  const src = t.closest("[data-sfsrc]"); if (src) { S.sf.src[src.dataset.sfsrc] = !S.sf.src[src.dataset.sfsrc]; return renderStats(); }
+  if (t.closest("[data-sfns]")) { S.sf.ns = !S.sf.ns; return renderStats(); }
+  const so = t.closest("[data-sfsort]"); if (so) { S.sf.sort = so.dataset.sfsort; return renderStats(); }
+  const hb = t.closest("[data-hb]");
+  if (hb) { const id = hb.dataset.hb; if (id.startsWith("sc:")) S.sf.selSc = S.sf.selSc === id.slice(3) ? null : id.slice(3); else S.sf.open[id] = !S.sf.open[id]; return renderStats(); }
+  const sq = t.closest("[data-sq]"); if (sq) { e.preventDefault(); S.sf.q = sq.dataset.sq; renderStats(); return window.scrollTo({ top: 0, behavior: "smooth" }); }
+  const tr = t.closest("tr[data-sid]"); if (tr) return openSpendEdit(tr.dataset.sid);
+  const a = t.closest("[data-act]"); if (!a) return;
+  if (a.dataset.act === "stcsv") return statCsv();
+  if (a.dataset.act === "rekaimp") return importReka();
+  if (a.dataset.act === "aiextras") {
+    const L = extrasUnclassified(); if (!L.length) return;
+    a.disabled = true; a.textContent = "Besorolás…";
+    try {
+      const r = await gemClassify(L.map(([, , x]) => x.name));
+      let n = 0; for (const o of r || []) { const it = L[o.i]; if (it && SUBS[o.cat]) { const [k, id, x] = it; month(k).extras[id] = stamp({ ...x, sc: o.cat }); n++; } }
+      persist(); renderStats(); toast(`${n} eseti tétel besorolva. Nézd át a listát lent.`);
+    } catch (x) { toast(x.message); renderStats(); }
+  }
+});
+$("#view-stats").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-hb]")) e.target.click(); });
+function statCsv(){
+  const q = s => `"${String(s ?? "").replace(/"/g, '""')}"`;
+  const lines = [["Hónap","Dátum","Tétel","Bolt","Főcsoport","Kategória","Forrás","Fizetés","Összeg (Ft)"].map(q).join(";")];
+  for (const r of statRows()) lines.push([r.k, r.d || "", r.name, r.shop, (SUBS[r.sc] || {}).gname || "", (SUBS[r.sc] || {}).name || "", r.src === "plan" ? "terv" : r.who === "reka" ? "Réka" : "saját", payName(r.pay), Math.round(r.amt)].map(q).join(";"));
+  download(`budget-statisztika-${today()}.csv`, "﻿" + lines.join("\r\n"), "text/csv");
+}
+/* Réka oldalának exportja: { app: "budget-reka", spend: [ {id, d, shop, pay, cur, lines:[{n,a,sc}], note, at, u} ] } */
+async function importReka(){
+  const inp = $("#fileIn"); inp.value = "";
+  const f = await new Promise(res => { inp.onchange = () => res(inp.files[0]); inp.click(); }); if (!f) return;
+  let d; try { d = JSON.parse(await f.text()); } catch (x) { return toast("Ez nem érvényes JSON."); }
+  const list = Array.isArray(d) ? d : Array.isArray(d.spend) ? d.spend : d.spend ? Object.entries(d.spend).map(([id, s]) => ({ id, ...s })) : null;
+  if (!list) return toast("Ebben a fájlban nincs költéslista.");
+  D().spend = D().spend || {};
+  let add = 0, upd = 0;
+  for (const s of list) {
+    if (!s || !s.id || !Array.isArray(s.lines)) continue;
+    const id = "r-" + String(s.id).replace(/^r-/, ""), old = D().spend[id];
+    if (D().deleted["spend/" + id]) continue;
+    const rec = { d: s.d || today(), who: "reka", pay: s.pay || "cash", cur: CURS.includes(s.cur) ? s.cur : "HUF", shop: s.shop || "", note: s.note || "", src: "reka", at: s.at || nowIso(),
+      lines: s.lines.map(l => ({ n: String(l.n || ""), a: +l.a || 0, sc: SUBS[l.sc] ? l.sc : (guessSc(l.n) || "egyeb.egyeb") })), u: s.u || s.at || nowIso() };
+    if (old && (old.u || "") >= rec.u) continue;
+    rec.rate = rec.cur === "HUF" ? 1 : (+s.rate || fx(rec.cur)); rec.huf = spendHuf(rec);
+    D().spend[id] = rec; old ? upd++ : add++;
+  }
+  persist(); renderAll(); toast(`Réka költései: ${add} új, ${upd} frissített.`);
+}
 
 </script>
 </body>
