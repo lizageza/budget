@@ -745,7 +745,13 @@ function changes(series){
   const pct = v => v ? (last / v - 1) * 100 : null;
   return { d: pct(series[series.length - 2][1]), w: pct(at(7)), m: pct(at(30)) };
 }
+let pxBusy = false;
 async function refreshPrices(quiet){
+  if (pxBusy) return;                       // egyszerre csak egy frissítés (a Twelve Data percenkénti kerete szűk)
+  pxBusy = true;
+  try { return await refreshPricesInner(quiet); } finally { pxBusy = false; }
+}
+async function refreshPricesInner(quiet){
   const A = D().assets, old = A.px || {};
   const px = { ...old, crypto: { ...(old.crypto || {}) }, stock: { ...(old.stock || {}) }, chg: { ...(old.chg || {}) } };
   const errs = [];
@@ -772,7 +778,10 @@ async function refreshPrices(quiet){
   // Twelve Data (ingyenes kulcs): pillanatnyi deviza- és részvényár, napi változással
   const td = (D().settings.tdKey || "").trim();
   let tdOk = false;
-  if (td) {
+  const tdLast = LS.get("tdLast", 0);
+  if (td && Date.now() - tdLast < 75e3) tdOk = !!old.fxSrc;      // 75 mp-en belül nem kérdezünk újra
+  else if (td) {
+    LS.set("tdLast", Date.now());
     try { await refreshTwelve(td, px); tdOk = true; }
     catch (x) { errs.push("Twelve Data: " + x.message); console.warn(x); }
   }
@@ -793,9 +802,14 @@ async function refreshPrices(quiet){
 }
 async function tdGet(path, key){
   const r = await fetch(`https://api.twelvedata.com/${path}${path.includes("?") ? "&" : "?"}apikey=${encodeURIComponent(key)}`, { cache: "no-store" });
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  const d = await r.json();
-  if (d && d.status === "error") throw new Error(d.message || "hiba " + d.code);
+  let d = null; try { d = await r.json(); } catch (x) {}
+  const code = r.ok ? (d && d.status === "error" ? +d.code || 0 : 0) : r.status;
+  if (code) {
+    const msg = (d && d.message) || "";
+    if (code === 429) throw new Error(/day|daily/i.test(msg) ? "elfogyott a napi keret, holnap újra működik" : "betelt a percenkénti keret (ingyenesen 8 lekérés/perc), 1–2 perc múlva magától rendben lesz");
+    if (code === 401 || code === 403) throw new Error("érvénytelen vagy nem engedélyezett kulcs" + (msg ? ": " + msg : ""));
+    throw new Error((msg || "HTTP " + code).slice(0, 160));
+  }
   return d;
 }
 async function refreshTwelve(key, px){
@@ -2000,7 +2014,14 @@ $("#view-settings").addEventListener("click", async e => {
   if (act === "expCsv") return exportCsv();
   if (act === "impJson") { const d = await readJsonFile(); if (!d) return; withUndo("Betöltve és összefésülve.", () => { S.data = normalize(mergeData(S.data, normalize(d))); }); return; }
   if (act === "tdtest") { const k = (D().settings.tdKey || "").trim(); if (!k) return toast("Előbb add meg a kulcsot."); a.disabled = true;
-    try { const d = await tdGet("quote?symbol=EUR/HUF", k); toast(`Rendben. EUR/HUF most: ${fmtN(+d.close, 2)} (${(d.datetime || "").slice(0, 16)})`); refreshPrices(true); } catch (x) { toast("Twelve Data: " + (x.message === "Failed to fetch" ? "a böngésző nem érte el (hálózat vagy blokkoló)" : x.message)); }
+    // a teszt maga a frissítés: így nem fogy kétszer a percenkénti keret
+    const wait = 75e3 - (Date.now() - LS.get("tdLast", 0));
+    if (wait > 0) { a.disabled = false; return toast(`Az előző lekérés óta még várj ${Math.ceil(wait / 1000)} mp-et (percenkénti keret).`); }
+    try { LS.set("tdLast", Date.now()); const px = { ...(D().assets.px || {}), stock: { ...((D().assets.px || {}).stock || {}) }, chg: { ...((D().assets.px || {}).chg || {}) } };
+      await refreshTwelve(k, px); px.at = nowIso(); px.u = nowIso(); D().assets.px = px; persist(); renderAll();
+      const s = Object.keys(px.stock).find(x => Object.values(D().assets.stocks).some(st => (st.sym || "").toUpperCase() === x));
+      toast(`Rendben. EUR/HUF ${fmtN(px.EUR, 2)}, USD/HUF ${fmtN(px.USD, 2)}${s ? `, ${s} $${fmtN(px.stock[s], 2)}` : ""}.`); }
+    catch (x) { toast("Twelve Data: " + (x.message === "Failed to fetch" ? "a böngésző nem érte el (hálózat vagy blokkoló)" : x.message)); }
     a.disabled = false; return; }
   if (act === "gemtest") { a.disabled = true; try { const l = await gemModels(true); toast(l.length ? "Rendben. Modell: " + ((D().settings.gemModel || "").trim() || l[0]) : "A kulcs jó, de nincs Flash modell."); } catch (x) { toast(x.message); } a.disabled = false; return; }
   if (act === "toLocal") return pickDir();
