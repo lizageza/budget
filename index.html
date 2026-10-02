@@ -844,8 +844,11 @@ function fx(cur){
   if (st["fx" + cur]) return +st["fx" + cur];           // kézi felülírás
   return px[cur] || { USD: 336, EUR: 386 }[cur];
 }
-function cryptoPrice(c){ const px = D().assets.px || {}; return (c.manual && c.usd) || (px.crypto && px.crypto[c.cg]) || c.usd || 0; }
-function stockPrice(s){ const px = D().assets.px || {}; return (s.manual && s.usd) || (px.stock && px.stock[s.sym]) || s.usd || 0; }
+/* a kézzel beírt ár csak addig számít, amíg nem jön frissebb élő ár */
+const manualWins = (o, live) => o.manual && o.usd && (!live || (o.usdAt || "") > ((D().assets.px || {}).at || ""));
+function cryptoPrice(c){ const px = D().assets.px || {}, live = px.crypto && px.crypto[c.cg]; return manualWins(c, live) ? c.usd : (live || c.usd || 0); }
+function stockPrice(s){ const px = D().assets.px || {}, live = px.stock && px.stock[(s.sym || "").trim().toUpperCase()]; return manualWins(s, live) ? s.usd : (live || s.usd || 0); }
+const priceIsManual = (o, live) => manualWins(o, live);
 /* Tartozás: a megadott egyenleg a „from” hónap törlesztése UTÁN értendő.
    Csökkenti: a későbbi hónapok törlesztő sora, a hitelre jelölt eseti törlesztések. Növeli: a kártyás költés és a díj (napló). */
 function debtParts(dt){
@@ -1707,7 +1710,7 @@ document.addEventListener("change", e => {
     const g = { stock: "stocks", crypto: "crypto", debt: "debts" }[parts[0]], o = A[g][parts[1]], fld = parts[2];
     if (["qty","start"].includes(fld)) { const v = numv(); if (v === undefined) return; o[fld] = v; if (fld === "start") o.baseAt = nowIso(); }
     else if (fld === "from") { o.from = el.value; o.baseAt = nowIso(); }
-    else if (fld === "usd") { const v = numv(); if (v === undefined) return; if (v == null) { o.manual = false; } else { o.usd = v; o.manual = true; } }
+    else if (fld === "usd") { const v = numv(); if (v === undefined) return; if (v == null) { o.manual = false; } else { o.usd = v; o.manual = true; o.usdAt = nowIso(); } }
     else o[fld] = el.value.trim();
     stamp(o); persist(); return renderAll();
   }
@@ -1890,13 +1893,13 @@ function renderAssets(){
   }
   // stocks
   h += `<div class="card"><div class="hd"><h2>Részvények</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="addstock">${ICON.plus}</button></div><div class="tblwrap"><table class="t"><thead><tr><th>Jel</th><th>Darab</th><th>Ár (USD)</th><th>Érték (USD)</th><th>Érték (Ft)</th><th></th></tr></thead><tbody>`;
-  for (const [id, s] of Object.entries(A.stocks)) { const p = stockPrice(s); h += `<tr><td><input class="inp" style="width:80px" data-f="stock|${id}|sym" value="${esc(s.sym)}"></td><td><input class="inp num" style="width:80px" inputmode="decimal" data-f="stock|${id}|qty" value="${s.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="stock|${id}|usd" value="${p || ""}" title="${s.manual ? "kézi ár" : "élő / utolsó ár"}"></td><td class="num">$${fmtN((+s.qty || 0) * p, 2)}</td><td class="num">${fmt((+s.qty || 0) * p * usd)}</td><td><button class="icon-btn" data-act="del" data-g="stocks" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
-  h += `</tbody></table></div><div class="bd muted small" style="padding-top:8px">${D().settings.tdKey ? "Élő ár: Twelve Data" + (D().assets.px && D().assets.px.stockDate ? " (" + D().assets.px.stockDate + (D().assets.px.stockOpen ? ", nyitott tőzsde" : ", zárt tőzsde: utolsó ár") + ")" : "") + "." : D().settings.avKey ? "Napi záróár: Alpha Vantage" + (D().assets.px && D().assets.px.stockDate ? " (" + D().assets.px.stockDate + ")" : "") + "." : "Élő árhoz adj meg ingyenes Twelve Data-kulcsot a Beállításokban; addig az itt beírt ár számít."}</div></div>`;
+  for (const [id, s] of Object.entries(A.stocks)) { const p = stockPrice(s); h += `<tr><td><input class="inp" style="width:80px" data-f="stock|${id}|sym" value="${esc(s.sym)}"></td><td><input class="inp num" style="width:80px" inputmode="decimal" data-f="stock|${id}|qty" value="${s.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="stock|${id}|usd" value="${p || ""}" title="${priceIsManual(s, (px.stock || {})[(s.sym || "").toUpperCase()]) ? "kézi ár (a következő élő ár felülírja)" : "élő / utolsó ár"}"></td><td class="num">$${fmtN((+s.qty || 0) * p, 2)}</td><td class="num">${fmt((+s.qty || 0) * p * usd)}</td><td><button class="icon-btn" data-act="del" data-g="stocks" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
+  h += `</tbody></table></div><div class="bd muted small" style="padding-top:8px">${D().settings.tdKey ? "Élő ár: Twelve Data" + (D().assets.px && D().assets.px.stockDate ? " – az ár időpontja: " + D().assets.px.stockDate + (D().assets.px.stockOpen ? " (nyitott tőzsde)" : " (zárt tőzsde: utolsó ár)") : " – még nem jött ár, nyomd meg az Árfolyamok frissítése gombot") + (D().assets.px && D().assets.px.at ? ", lekérve " + new Date(D().assets.px.at).toLocaleString("hu-HU", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "") + "." : D().settings.avKey ? "Napi záróár: Alpha Vantage" + (D().assets.px && D().assets.px.stockDate ? " (" + D().assets.px.stockDate + ")" : "") + "." : "Élő árhoz adj meg ingyenes Twelve Data-kulcsot a Beállításokban; addig az itt beírt ár számít."}</div></div>`;
   // crypto
   h += `<div class="card"><div class="hd"><h2>Kripto</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="addcrypto">${ICON.plus}</button></div><div class="tblwrap"><table class="t"><thead><tr><th>Jel</th><th>Mennyiség</th><th>Ár (USD)</th><th>Érték (USD)</th><th>Érték (Ft)</th><th></th></tr></thead><tbody>`;
   let ct = 0;
   for (const [id, c] of Object.entries(A.crypto)) { const p = cryptoPrice(c), val = (+c.qty || 0) * p * usd; ct += val;
-    h += `<tr><td><input class="inp" style="width:78px" data-f="crypto|${id}|sym" value="${esc(c.sym)}" title="CoinGecko: ${esc(c.cg || "")}"></td><td><input class="inp num" style="width:120px" inputmode="decimal" data-f="crypto|${id}|qty" value="${c.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="crypto|${id}|usd" value="${p ? +p.toPrecision(6) : ""}" title="${c.manual ? "kézi ár" : "CoinGecko"}"></td><td class="num">$${fmtN((+c.qty || 0) * p, 2)}</td><td class="num">${fmt(val)}</td><td><button class="icon-btn" data-act="cg" data-id="${id}" title="CoinGecko-azonosító">id</button><button class="icon-btn" data-act="del" data-g="crypto" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
+    h += `<tr><td><input class="inp" style="width:78px" data-f="crypto|${id}|sym" value="${esc(c.sym)}" title="CoinGecko: ${esc(c.cg || "")}"></td><td><input class="inp num" style="width:120px" inputmode="decimal" data-f="crypto|${id}|qty" value="${c.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="crypto|${id}|usd" value="${p ? +p.toPrecision(6) : ""}" title="${priceIsManual(c, (px.crypto || {})[c.cg]) ? "kézi ár (a következő élő ár felülírja)" : "CoinGecko"}"></td><td class="num">$${fmtN((+c.qty || 0) * p, 2)}</td><td class="num">${fmt(val)}</td><td><button class="icon-btn" data-act="cg" data-id="${id}" title="CoinGecko-azonosító">id</button><button class="icon-btn" data-act="del" data-g="crypto" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
   h += `</tbody><tfoot><tr><td>Összesen</td><td></td><td></td><td class="num">$${fmtN(t.cryptoUsd, 2)}</td><td class="num">${fmt(ct)}</td><td></td></tr></tfoot></table></div></div>`;
   // debts
   h += `<div class="card"><div class="hd"><h2>Tartozások</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Név</th><th>Egyenleg</th><th>E hónap törlesztése után</th><th>Hátralévő</th><th>Vége</th><th></th></tr></thead><tbody>`;
