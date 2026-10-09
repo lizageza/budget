@@ -374,6 +374,8 @@ table.compact td{padding:4px 6px}
 table.t th.tx,table.t td.tx{text-align:left;white-space:normal;min-width:90px}
 table.t td.tx.nm{min-width:160px}
 @media (max-width:1000px){.kpis.k5 .kpi:last-child{grid-column:1/-1}}
+.perbtn{background:none;border:0;padding:2px 6px;margin-left:-6px;border-radius:7px;cursor:pointer;font:inherit;color:var(--muted);font-size:14px}
+.perbtn:hover{background:var(--surface-2);color:var(--ink)}
 
 </style>
 </head>
@@ -446,10 +448,27 @@ const mkAdd = (k, n) => { const { y, m } = mkParse(k); return mkOf(y, m + n); };
 const mkName = k => { const { y, m } = mkParse(k); return `${cap(HU_MONTHS[m-1])} ${y}`; };
 const mkShort = k => { const { y, m } = mkParse(k); return `${cap(HU_MONTHS[m-1]).slice(0,3)} ${String(y).slice(2)}`; };
 function startDay(){ return (S.data && S.data.settings && S.data.settings.startDay) || 10; }
-function currentMk(d){ d = d || new Date(); const sd = startDay(); return d.getDate() >= sd ? mkOf(d.getFullYear(), d.getMonth()+1) : mkOf(d.getFullYear(), d.getMonth()); }
+const dstr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dparse = s => { const [y, m, d] = String(s).split("-").map(Number); return new Date(y, m - 1, d); };
+/* egy hónap (időszak) kezdőnapja: egyedi beállítás (pl. korábban jött a fizetés), különben a beállított nap */
+function periodStartStr(k){
+  const o = S.data && S.data.periods && S.data.periods[k];
+  if (o && /^\d{4}-\d\d-\d\d$/.test(o.s || "")) return o.s;
+  const { y, m } = mkParse(k); return dstr(new Date(y, m - 1, startDay()));
+}
+function mkOfDateStr(ds){
+  const [y, m, d] = String(ds).split("-").map(Number);
+  let k = d >= startDay() ? mkOf(y, m) : mkOf(y, m - 1);
+  for (let i = 0; i < 2; i++) {
+    if (ds < periodStartStr(k)) k = mkAdd(k, -1);
+    else if (ds >= periodStartStr(mkAdd(k, 1))) k = mkAdd(k, 1);
+    else break;
+  }
+  return k;
+}
+function currentMk(d){ return mkOfDateStr(dstr(d || new Date())); }
 function period(k){
-  const { y, m } = mkParse(k), sd = startDay();
-  const start = new Date(y, m-1, sd), end = new Date(y, m, sd - 1);
+  const start = dparse(periodStartStr(k)), end = dparse(periodStartStr(mkAdd(k, 1))); end.setDate(end.getDate() - 1);
   let mondays = 0; for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) if (d.getDay() === 1) mondays++;
   return { start, end, mondays };
 }
@@ -578,13 +597,13 @@ function mergeData(A, B){
   out.assets = {};
   for (const g of ["accounts","stocks","crypto","debts","snaps"]) out.assets[g] = mergeObj(aa[g], bb[g], "assets/" + g, del);
   out.assets.px = newer(aa.px, bb.px);
-  for (const g of ["spend","learn","statmap"]) out[g] = mergeObj(A[g], B[g], g, del);
+  for (const g of ["spend","learn","statmap","periods"]) out[g] = mergeObj(A[g], B[g], g, del);
   return out;
 }
 function normalize(d){
   d.settings = { rekaPct: 52, rekaRound: 5000, rekaMode: "ceil", startDay: 10, folder: "Budget", ...(d.settings || {}) };
   d.cats = d.cats || []; d.items = d.items || []; d.months = d.months || {}; d.deleted = d.deleted || {};
-  d.assets = d.assets || {}; d.spend = d.spend || {}; d.learn = d.learn || {}; d.statmap = d.statmap || {};
+  d.assets = d.assets || {}; d.spend = d.spend || {}; d.learn = d.learn || {}; d.statmap = d.statmap || {}; d.periods = d.periods || {};
   for (const g of ["accounts","stocks","crypto","debts","snaps"]) d.assets[g] = d.assets[g] || {};
   for (const mo of Object.values(d.months)) { mo.lines = mo.lines || {}; mo.extras = mo.extras || {}; mo.meta = mo.meta || {}; }
   for (const [id, dt] of Object.entries(d.assets.debts)) if (!dt.id) dt.id = id;
@@ -912,6 +931,7 @@ const TAX = [
   { id: "ruha",   name: "Ruha", c: "--s9", subs: [["ruha","Ruha, cipő"]] },
   { id: "vall",   name: "Vállalkozói", c: "--s9", subs: [["ado","Iparűzési adó"],["kam","Kamarai díj"]] },
   { id: "egyeb",  name: "Egyéb", c: "--s9", subs: [["egyeb","Egyéb"]] },
+  { id: "bank",   name: "Banki díjak", c: "--s9", subs: [["utal","Utalási, számlavezetési díj"],["kartya","Kártyadíj, kamat"]] },
   { id: "megt",   name: "Megtakarítás", ns: true, subs: [["megt","Megtakarítás"]] },
   { id: "hitel",  name: "Hitelkártya-törlesztés", ns: true, subs: [["kartya","Hitelkártya-törlesztés"]] },
   { id: "reka",   name: "Rékának utalás", ns: true, subs: [["reka","Rékának utalás"]] }
@@ -920,9 +940,9 @@ const SUBS = {}; for (const g of TAX) for (const [s, n] of g.subs) SUBS[g.id + "
 const groupOf = sc => (SUBS[sc] || SUBS["egyeb.egyeb"]).g;
 const taxGroup = id => TAX.find(g => g.id === id);
 /* a halmozott diagram színei: 8 fix szín; a lakáshitel a rezsivel közös sávban, a kisebb csoportok (Ruha, Vállalkozói, Egyéb) közös szürkében */
-const STACK = [["lak","rezsi"],["komm"],["etk"],["haz"],["koz"],["gyer"],["eg"],["hobbi"],["ruha","vall","egyeb"]];
+const STACK = [["lak","rezsi"],["komm"],["etk"],["haz"],["koz"],["gyer"],["eg"],["hobbi"],["bank","ruha","vall","egyeb"]];
 const stackOf = g => STACK.findIndex(a => a.includes(g));
-const stackName = i => i === 0 ? "Lakáshitel és rezsi" : i === 8 ? "Egyéb (ruha, vállalkozói, egyéb)" : taxGroup(STACK[i][0]).name;
+const stackName = i => i === 0 ? "Lakáshitel és rezsi" : i === 8 ? "Egyéb (banki díj, ruha, vállalkozói, egyéb)" : taxGroup(STACK[i][0]).name;
 const stackColor = i => i === 8 ? cssVar("--s9") : cssVar(SERIES[i]);
 
 /* a meglévő tételek alapértelmezett besorolása általános szabályokkal (a Statisztika fülön átírható).
@@ -953,6 +973,8 @@ function extraSc(x){ if (x.sc) return x.sc; if (x.debt) return "hitel.kartya"; i
 /* ================= kulcsszavas besorolás (internet nélkül is) ================= */
 const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
 const KW = [
+  ["bank.utal", "utalasi utalasdij utalas dija szamlavezetesi szamlavezetes tranzakcios jutalek bankdij keszpenzfelvetel keszpenzfelveteli"],
+  ["bank.kartya", "kartyadij kartyadija kamat kesedelmi"],
   ["etk.alk", "sor sort sorok heineken borsodi dreher soproni arany aszok kobanyai staropramen pilsner bor borok rose tokaji pezsgo palinka whisky whiskey vodka rum gin likor jagermeister unicum vermut cider fröccs"],
   ["etk.nasi", "chips chio pringles lays snack ropi popcorn cola kola coca pepsi sprite fanta schweppes kinley mountain dew uditok udito hell monster red bull redbull burn energiaital energy csoki csokolade milka cadbury kinder bounty snickers mars twix balaton boci sport szelet tibi nutella oreo keksz nápolyi napolyi gumicukor haribo cukorka nyalóka nyaloka fagyi fagylalt jegkrem magnum cornetto desszert sutemeny fank croissant tortaszelet drazse mogyoro pisztacia"],
   ["etk.ett", "etterem bufe pizza pizzeria burger kfc mcdonald mcdonalds burger king subway wolt foodora netpincer kebab gyros sushi kavezo cukraszda menu ebed vacsora kiszallitas starbucks costa"],
@@ -994,7 +1016,7 @@ const PAY = () => [["rev","Revolut"],["raif","Raiffeisen"],["cash","Készpénz"]
 const payName = id => (PAY().find(p => p[0] === id) || [id, id])[1];
 const CURS = ["HUF","EUR","USD"];
 const curSym = c => c === "HUF" ? "Ft" : c === "EUR" ? "€" : "$";
-function mkOfDate(ds){ const [y, m, d] = String(ds || today()).split("-").map(Number); return d >= startDay() ? mkOf(y, m) : mkOf(y, m - 1); }
+function mkOfDate(ds){ return mkOfDateStr(ds || today()); }
 const spends = () => Object.entries(D().spend || {}).map(([id, s]) => ({ ...s, id }));
 function spendHuf(s){ return Math.round((s.lines || []).reduce((a, l) => a + (+l.a || 0), 0) * (s.rate || 1)); }
 function spendsOf(k, who){ return spends().filter(s => mkOfDate(s.d) === k && (!who || (s.who || "geza") === who)).sort((a, b) => (b.d || "").localeCompare(a.d || "") || (b.at || "").localeCompare(a.at || "")); }
@@ -1068,7 +1090,7 @@ async function gemCall(parts, schema){
 }
 const CAT_HELP = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s, n]) => `${g.id}.${s} = ${g.name} / ${n}`)).join("\n");
 const CAT_ENUM = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s]) => g.id + "." + s));
-const CAT_RULES = `Category rules: chips, crisps, salty snacks, soft drinks (cola, Pepsi, Sprite, Fanta), energy drinks (Hell, Monster, Red Bull), chocolate, candy, ice cream, biscuits/cookies, pastries and desserts => etk.nasi. Beer, wine, spirits, sparkling wine => etk.alk. Coffee, tea, bread, dairy, meat, vegetables, fruit, mineral water, juice-free basics => etk.elel. Cleaning and personal hygiene products => haz.drog. Bottle deposit (betétdíj, visszaváltási díj) => etk.elel unless clearly for alcohol (then etk.alk). Fuel => koz.uza. Medicine, pharmacy => eg.gyogy. Use egyeb.egyeb only if nothing fits.`;
+const CAT_RULES = `Category rules: chips, crisps, salty snacks, soft drinks (cola, Pepsi, Sprite, Fanta), energy drinks (Hell, Monster, Red Bull), chocolate, candy, ice cream, biscuits/cookies, pastries and desserts => etk.nasi. Beer, wine, spirits, sparkling wine => etk.alk. Coffee, tea, bread, dairy, meat, vegetables, fruit, mineral water, juice-free basics => etk.elel. Cleaning and personal hygiene products => haz.drog. Bottle deposit (betétdíj, visszaváltási díj) => etk.elel unless clearly for alcohol (then etk.alk). Fuel => koz.uza. Medicine, pharmacy => eg.gyogy. Bank transfer fees, account maintenance fees, cash withdrawal fees => bank.utal; card fees and interest => bank.kartya. Use egyeb.egyeb only if nothing fits.`;
 function receiptSchema(){
   return { type: "OBJECT", properties: {
     shop: { type: "STRING" }, date: { type: "STRING", description: "YYYY-MM-DD or empty" },
@@ -1453,7 +1475,7 @@ function renderMonth(){
     <h1>${mkName(k)}</h1>
     ${k === cur ? `<span class="pill now">aktuális</span>` : `<button class="btn sm ghost" data-act="mtoday">${ICON.today} Aktuális hónap</button>`}
     ${mo && mo.meta.closed ? `<span class="pill">lezárva</span>` : ""}
-    <span class="per">${dshort(per.start)}–${dshort(per.end)} · ${per.mondays} hétfő${k === cur ? ` · még ${left} nap` : ""}</span>
+    <button class="per perbtn" data-act="perset" title="Az időszak kezdő- és végnapjának módosítása">${dshort(per.start)}–${dshort(per.end)}${(D().periods[k] || D().periods[mkAdd(k, 1)]) ? " ✎" : ""} · ${per.mondays} hétfő${k === cur ? ` · még ${left} nap` : ""}</button>
     <span class="spacer"></span>
     ${mo ? `<label class="toggle small muted"><input type="checkbox" data-act="zero" ${S.showZero ? "checked" : ""}> 0 Ft-os sorok</label>` : ""}
   </div>`;
@@ -1549,6 +1571,7 @@ $("#view-month").addEventListener("click", e => {
     if (act === "receipt") return openReceipt();
     if (act === "quick") return openQuick();
     if (act === "gostats") { S.sf.per = "cur"; return setTab("stats"); }
+    if (act === "perset") return openPeriod(S.mk);
     if (act === "mclose") return openClose(S.mk);
     if (act === "mreopen") { const mo = month(S.mk); mo.meta = stamp({ ...mo.meta, closed: false }); persist(); return renderAll(); }
     return;
@@ -1679,6 +1702,28 @@ function openReka(k){
     if (what === "exact") { mo.meta = stamp({ ...mo.meta, rekaPaid: c.reka, rekaAt: nowIso() }); persist(); closeDrawer(); renderAll(); }
     if (what === "clear") { const m = { ...mo.meta }; delete m.rekaPaid; mo.meta = stamp(m); persist(); closeDrawer(); renderAll(); }
     if (what === "change:paid") { const v = parseAmt(el.value); const m = { ...mo.meta }; if (v == null || Number.isNaN(v)) delete m.rekaPaid; else { m.rekaPaid = v; m.rekaAt = m.rekaAt || nowIso(); } mo.meta = stamp(m); persist(); renderAll(); }
+  };
+}
+function openPeriod(k){
+  const nk = mkAdd(k, 1), per = period(k);
+  const def = kk => { const { y, m } = mkParse(kk); return dstr(new Date(y, m - 1, startDay())); };
+  openDrawer(() => "Időszak: " + mkName(k), () => `
+    <p class="muted small" style="margin:0">Alapból minden hónap a ${startDay()}-i naptól a következő hónap ${startDay() - 1}-i napjáig tart. Ha a fizetés máskor jön, itt átállíthatod. A kezdőnap az előző hónap végét, a végnap a következő hónap kezdetét is módosítja.</p>
+    <div class="two"><div class="field"><label for="pS">Kezdőnap</label><input class="inp" id="pS" type="date" value="${dstr(per.start)}"></div>
+      <div class="field"><label for="pE">Utolsó nap</label><input class="inp" id="pE" type="date" value="${dstr(per.end)}"></div></div>
+    <div class="actions"><button class="btn primary" data-dr="ok">${ICON.check} Mentés</button><button class="btn" data-dr="reset">Alapértelmezett</button></div>`);
+  DR.handler = (what) => {
+    const P = D().periods;
+    const setP = (kk, s) => { if (s === def(kk)) { if (P[kk]) { delete P[kk]; D().deleted["periods/" + kk] = nowIso(); } } else { P[kk] = stamp({ s }); delete D().deleted["periods/" + kk]; } };
+    if (what === "reset") { setP(k, def(k)); setP(nk, def(nk)); }
+    else if (what === "ok") {
+      const s = $("#pS").value, e = $("#pE").value; if (!s || !e) return toast("Add meg mindkét napot.");
+      if (e < s) return toast("Az utolsó nap nem lehet a kezdőnap előtt.");
+      const n = dparse(e); n.setDate(n.getDate() + 1);
+      if (s <= periodStartStr(mkAdd(k, -1))) return toast("A kezdőnap az előző időszak kezdete előtt van.");
+      setP(k, s); setP(nk, dstr(n));
+    } else return;
+    persist(); closeDrawer(); renderAll(); toast(`${mkName(k)}: ${dshort(period(k).start)}–${dshort(period(k).end)}`);
   };
 }
 function openClose(k){
@@ -2084,6 +2129,7 @@ async function openStore(store){
   startApp(); status("Betöltve", "ok"); if (pending) flush();
 }
 function startApp(){
+  try { migrateBank(); } catch (x) { console.warn(x); }
   S.mk = S.mk || currentMk();
   if (!ST.store) status("nem ment", "demo");
   S.tab = LS.get("tab", "month"); if (!["month","year","stats","assets","items","settings"].includes(S.tab)) S.tab = "month";
@@ -2117,19 +2163,34 @@ function statMonths(){
   for (const s of spends()) set.add(mkOfDate(s.d));
   return [...set].sort();
 }
-function statRange(){
-  const f = S.sf, cur = currentMk(), all = statMonths();
-  if (f.per === "custom") { const a = f.from || all[0] || cur, b = f.to || cur; return a <= b ? [a, b] : [b, a]; }
-  if (f.per === "cur") return [cur, cur];
-  if (f.per === "prev") { const p = mkAdd(cur, -1); return [p, p]; }
-  if (f.per === "year") { const y = mkParse(cur).y; return [y + "-01", cur]; }
-  if (f.per === "all") return [all[0] || cur, cur];
-  const n = +f.per || 6; return [mkAdd(cur, -(n - 1)), cur];
+/* a szűrt időszak dátumokkal: { from, to } (YYYY-MM-DD), és az érintett költségvetési hónapok [a, b] */
+function statDates(){
+  const f = S.sf, cur = currentMk(), all = statMonths(), t = new Date();
+  const perFrom = k => periodStartStr(k), perTo = k => dstr(period(k).end);
+  const calM = (y, m) => [dstr(new Date(y, m - 1, 1)), dstr(new Date(y, m, 0))];
+  let from, to;
+  if (f.per === "custom") { let a = f.from || all[0] || cur, b = f.to || cur; if (a > b) [a, b] = [b, a]; from = perFrom(a); to = perTo(b); }
+  else if (f.per === "cur") { from = perFrom(cur); to = perTo(cur); }
+  else if (f.per === "prev") { const p = mkAdd(cur, -1); from = perFrom(p); to = perTo(p); }
+  else if (f.per === "cal") [from, to] = calM(t.getFullYear(), t.getMonth() + 1);
+  else if (f.per === "prevcal") [from, to] = calM(t.getFullYear(), t.getMonth());
+  else if (f.per === "year") { from = t.getFullYear() + "-01-01"; to = perTo(cur); }
+  else if (f.per === "all") { from = perFrom(all[0] || cur); to = perTo(cur); }
+  else { const n = +f.per || 6; from = perFrom(mkAdd(cur, -(n - 1))); to = perTo(cur); }
+  return { from, to, a: mkOfDate(from), b: mkOfDate(to) };
 }
+function statRange(){ const d = statDates(); return [d.a, d.b]; }
 function monthsIn(a, b){ const out = []; for (let k = a; k <= b; k = mkAdd(k, 1)) out.push(k); return out; }
-/* minden költés egy sorban: tervezett tételek (tény, nyitottnál a terv), eseti tételek, rögzített költések */
+/* a tervezett tétel dátuma: a terhelés napja az időszakon belül, ennek hiányában az időszak első napja */
+function lineDate(k, due){
+  const per = period(k); if (!due) return dstr(per.start);
+  let d = new Date(per.start.getFullYear(), per.start.getMonth(), due); if (d < per.start) d = new Date(per.start.getFullYear(), per.start.getMonth() + 1, due);
+  if (d > per.end) d = per.end; return dstr(d);
+}
+/* minden költés egy sorban: tervezett tételek (tény, nyitottnál a terv), eseti tételek, rögzített költések, kártyadíjak */
 function statRows(){
-  const f = S.sf, [a, b] = statRange(), cur = currentMk(), q = fold(f.q);
+  const f = S.sf, { from, to, a, b } = statDates(), cur = currentMk(), q = fold(f.q);
+  const inR = d => d >= from && d <= to;
   const rows = [];
   for (const k of monthsIn(a, b)) {
     const mo = month(k);
@@ -2137,19 +2198,37 @@ function statRows(){
       for (const l of monthLines(k)) {
         if (isIncomeCat(l.cat)) continue;
         const v = expA(l); if (!v) continue;
+        const ld = lineDate(k, l.due); if (!inR(ld)) continue;
         const it = l.kind === "item" ? itemById(l.id) : null;
         const sc = it ? itemSc(it) : extraSc(mo.extras[l.id] || {});
-        rows.push({ k, d: null, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, p: l.kind === "item" ? l.p : null, kind: l.kind, lid: l.id, open: !l.done && l.a == null });
+        rows.push({ k, d: null, ld, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, p: l.kind === "item" ? l.p : null, kind: l.kind, lid: l.id, open: !l.done && l.a == null });
       }
-      if (f.ns) { const c = calc(k), rv = c.rekaPaid ?? (k < cur ? c.reka : 0); if (rv) rows.push({ k, d: null, src: "plan", who: "plan", sc: "reka.reka", name: "Rékának utalás", shop: "", pay: "raif", amt: rv }); }
+      if (f.ns) { const c = calc(k), rv = c.rekaPaid ?? (k < cur ? c.reka : 0), ld = (mo.meta.rekaAt || "").slice(0, 10) || dstr(period(k).start); if (rv && inR(ld)) rows.push({ k, d: null, ld, src: "plan", who: "plan", sc: "reka.reka", name: "Rékának utalás", shop: "", pay: "raif", amt: rv }); }
     }
   }
   for (const s of spends()) {
-    const k = mkOfDate(s.d), who = s.who || "geza";
-    if (k < a || k > b || !f.src[who]) continue;
+    const who = s.who || "geza";
+    if (!inR(s.d || "") || !f.src[who]) continue;
+    const k = mkOfDate(s.d);
     for (const l of s.lines || []) rows.push({ k, d: s.d, src: "spend", who, sc: l.sc, name: l.n, shop: s.shop || "", pay: s.pay, amt: (+l.a || 0) * (s.rate || 1), sid: s.id, note: s.note || "" });
   }
+  // hitelkártyák naplójába írt díjak
+  if (f.src.geza) for (const dt of Object.values(D().assets.debts)) for (const l of Object.values(dt.log || {})) {
+    const d = (l.at || "").slice(0, 10); if (l.t !== "fee" || !inR(d)) continue;
+    rows.push({ k: mkOfDate(d), d, src: "spend", who: "geza", sc: "bank.kartya", name: (l.note || "Kártyadíj") + " (" + dt.name + ")", shop: dt.name, pay: dt.id, amt: +l.amt || 0 });
+  }
   return rows.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!q || fold(r.name + " " + r.shop + " " + (r.note || "")).includes(q)));
+}
+/* egyszeri: az „Egyéb”-be került banki díjak átsorolása */
+function migrateBank(){
+  const st = D().settings; if ((st.mig || []).includes("bank1")) return;
+  let n = 0;
+  for (const [id, s] of Object.entries(D().spend || {})) {
+    let ch = false; const lines = (s.lines || []).map(l => { if (l.sc === "egyeb.egyeb") { const g = guessSc(l.n); if (g && g.startsWith("bank.")) { ch = true; n++; return { ...l, sc: g }; } } return l; });
+    if (ch) D().spend[id] = stamp({ ...s, lines });
+  }
+  st.mig = [...(st.mig || []), "bank1"]; stamp(st);
+  if (n) { persist(); toast(`${n} banki díj átkerült a „Banki díjak” kategóriába.`); }
 }
 const sumBy = (rows, key) => { const m = {}; for (const r of rows) { const k = typeof key === "function" ? key(r) : r[key]; m[k] = (m[k] || 0) + r.amt; } return m; };
 function hbars(entries, total, opt){
@@ -2161,7 +2240,7 @@ function hbars(entries, total, opt){
       <span class="hv num">${fmt(v, { noUnit: true })}</span><span class="hp num">${total ? (v / total * 100).toFixed(0) + "%" : ""}</span></div>`).join("")}</div>`;
 }
 function renderStats(){
-  const v = $("#view-stats"), f = S.sf, [a, b] = statRange(), ms = monthsIn(a, b), cur = currentMk(), all = statMonths();
+  const v = $("#view-stats"), f = S.sf, sd = statDates(), a = sd.a, b = sd.b, ms = monthsIn(a, b), cur = currentMk(), all = statMonths();
   const rows = statRows();
   const spendRows = rows.filter(r => !(SUBS[r.sc] || {}).ns);
   const total = spendRows.reduce((s, r) => s + r.amt, 0);
@@ -2172,13 +2251,15 @@ function renderStats(){
   const nRec = new Set(own.map(r => r.sid)).size;
   // lefedettség: neked maradt (terv) vs saját rögzített költés
   let left = 0; for (const k of ms) { const c = month(k) && k <= cur ? calc(k) : null; if (c) left += Math.max(c.bal.p - (c.rekaPaid ?? c.reka), 0); }
-  const ownG = spends().filter(s => (s.who || "geza") === "geza" && ms.includes(mkOfDate(s.d))).reduce((x, s) => x + spendHuf(s), 0);
+  const inD = s => (s.d || "") >= sd.from && (s.d || "") <= sd.to;
+  const ownG = spends().filter(s => (s.who || "geza") === "geza" && inD(s)).reduce((x, s) => x + spendHuf(s), 0);
   const rekaT = ms.reduce((x, k) => { const c = month(k) && k <= cur ? calc(k) : null; return x + (c ? (c.rekaPaid ?? (k < cur ? c.reka : 0)) : 0); }, 0);
-  const rekaS = spends().filter(s => s.who === "reka" && ms.includes(mkOfDate(s.d))).reduce((x, s) => x + spendHuf(s), 0);
+  const rekaS = spends().filter(s => s.who === "reka" && inD(s)).reduce((x, s) => x + spendHuf(s), 0);
   const opt = (k, sel) => `<option value="${k}" ${k === sel ? "selected" : ""}>${mkName(k)}</option>`;
-  let h = `<div class="mhead"><h1>Statisztika</h1><span class="per">${a === b ? mkName(a) : mkName(a) + " – " + mkName(b)} · ${nM} hónap</span></div>
+  const dl = s => s.replace(/-/g, ".") + ".";
+  let h = `<div class="mhead"><h1>Statisztika</h1><span class="per">${dl(sd.from)} – ${dl(sd.to)}${nM > 1 ? " · " + nM + " időszak" : ""}</span></div>
   <div class="sfbar">
-    <select class="inp" data-sf="per" aria-label="Időszak">${[["cur","Aktuális hónap"],["prev","Előző hónap"],["3","Utolsó 3 hónap"],["6","Utolsó 6 hónap"],["12","Utolsó 12 hónap"],["year","Idei év"],["all","Teljes időszak"],["custom","Egyedi…"]].map(([k, n]) => `<option value="${k}" ${f.per === k ? "selected" : ""}>${n}</option>`).join("")}</select>
+    <select class="inp" data-sf="per" aria-label="Időszak">${[["cur",`Aktuális időszak (${dshort(period(cur).start)}–${dshort(period(cur).end)})`],["prev","Előző időszak"],["cal","Aktuális naptári hónap"],["prevcal","Előző naptári hónap"],["3","Utolsó 3 időszak"],["6","Utolsó 6 időszak"],["12","Utolsó 12 időszak"],["year","Idei év"],["all","Teljes időszak"],["custom","Egyedi…"]].map(([k, n]) => `<option value="${k}" ${f.per === k ? "selected" : ""}>${n}</option>`).join("")}</select>
     ${f.per === "custom" ? `<select class="inp" data-sf="from" aria-label="Ettől">${all.map(k => opt(k, a)).join("")}</select><select class="inp" data-sf="to" aria-label="Eddig">${all.map(k => opt(k, b)).join("")}</select>` : ""}
     <select class="inp" data-sf="g" aria-label="Főcsoport"><option value="">Minden csoport</option>${TAX.filter(g => f.ns || !g.ns).map(g => `<option value="${g.id}" ${f.g === g.id ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select>
     <input class="inp grow" type="search" data-sf="q" value="${esc(f.q)}" placeholder="Keresés: tétel, bolt (pl. Hell, Lidl)" aria-label="Keresés">
@@ -2220,7 +2301,7 @@ function renderStats(){
   // boltok, tételek, fizetés
   const sp = rows.filter(r => r.src === "spend");
   if (sp.length) {
-    const shops = {}; for (const s of spends()) { const k = mkOfDate(s.d); if (k < a || k > b || !f.src[s.who || "geza"] || !s.shop) continue; const o = shops[s.shop] = shops[s.shop] || { n: 0, v: 0 }; o.n++; o.v += spendHuf(s); }
+    const shops = {}; for (const s of spends()) { if (!inD(s) || !f.src[s.who || "geza"] || !s.shop) continue; const o = shops[s.shop] = shops[s.shop] || { n: 0, v: 0 }; o.n++; o.v += spendHuf(s); }
     h += `<div class="card"><div class="hd"><h2>Boltok</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Bolt</th><th>Alkalom</th><th>Összeg</th></tr></thead><tbody>${Object.entries(shops).sort((x, y) => y[1].v - x[1].v).slice(0, 10).map(([n, o]) => `<tr><td><a href="#" data-sq="${esc(n)}">${esc(n)}</a></td><td class="num">${o.n}</td><td class="num">${fmt(o.v, { noUnit: true })}</td></tr>`).join("") || `<tr><td colspan="3" class="muted">Nincs bolt megadva.</td></tr>`}</tbody></table></div></div>`;
     h += `<div class="card"><div class="hd"><h2>Leggyakoribb tételek</h2></div><div class="bd">${topTable(sp, "name", 10)}</div></div>`;
     const byPay = sumBy(sp, "pay");
@@ -2228,11 +2309,11 @@ function renderStats(){
   }
   h += `</div>`;
   // tételek listája
-  const list = rows.slice().sort((x, y) => S.sf.sort === "a" ? y.amt - x.amt : ((y.d || y.k + "-99").localeCompare(x.d || x.k + "-99")));
+  const list = rows.slice().sort((x, y) => S.sf.sort === "a" ? y.amt - x.amt : ((y.d || y.ld || "").localeCompare(x.d || x.ld || "")));
   h += `<div class="card" style="margin-top:16px"><div class="hd"><h2>Tételek</h2><span class="muted small">${list.length} sor · ${fmt(list.reduce((s, r) => s + r.amt, 0))}</span><span class="spacer" style="flex:1"></span>
     <div class="seg"><button data-sfsort="d" aria-pressed="${S.sf.sort !== "a"}">Dátum</button><button data-sfsort="a" aria-pressed="${S.sf.sort === "a"}">Összeg</button></div><button class="btn sm" data-act="stcsv">CSV</button></div>
     <div class="tblwrap" style="max-height:60vh"><table class="t"><thead><tr><th>Dátum</th><th class="tx">Tétel</th><th class="tx">Bolt</th><th class="tx">Kategória</th><th class="tx">Forrás</th><th>Összeg</th></tr></thead><tbody>
-    ${list.slice(0, 400).map(r => `<tr ${r.sid ? `data-sid="${esc(r.sid)}" class="clk"` : ""}><td class="num">${r.d ? r.d.slice(5).replace("-", ".") + "." : mkShort(r.k)}</td><td class="tx nm">${esc(r.name)}</td><td class="tx">${esc(r.shop)}</td><td class="tx">${esc((SUBS[r.sc] || {}).name || "")}</td><td class="tx"><span class="chip">${r.src === "plan" ? "terv" : r.who === "reka" ? "Réka" : payName(r.pay)}</span></td><td class="num">${fmt(r.amt, { noUnit: true })}</td></tr>`).join("")}
+    ${list.slice(0, 400).map(r => `<tr ${r.sid ? `data-sid="${esc(r.sid)}" class="clk"` : ""}><td class="num">${(r.d || r.ld) ? (r.d || r.ld).slice(5).replace("-", ".") + "." : mkShort(r.k)}</td><td class="tx nm">${esc(r.name)}</td><td class="tx">${esc(r.shop)}</td><td class="tx">${esc((SUBS[r.sc] || {}).name || "")}</td><td class="tx"><span class="chip">${r.src === "plan" ? "terv" : r.who === "reka" ? "Réka" : payName(r.pay)}</span></td><td class="num">${fmt(r.amt, { noUnit: true })}</td></tr>`).join("")}
     ${list.length > 400 ? `<tr><td colspan="6" class="muted">… és még ${list.length - 400} sor (szűkíts, vagy töltsd le CSV-ben).</td></tr>` : ""}</tbody></table></div></div>`;
   // besorolás és import
   h += `<div class="sgrid" style="margin-top:16px"><div class="card"><div class="hd"><h2>A tervezett tételek besorolása</h2></div><div class="bd muted small" style="padding-bottom:6px">A Hónap fül felosztása nem változik, ez csak a statisztikát érinti.</div><div class="smap">
