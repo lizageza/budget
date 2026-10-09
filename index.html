@@ -2191,14 +2191,16 @@ function lineDate(k, due){
 function statRows(){
   const f = S.sf, { from, to, a, b } = statDates(), cur = currentMk(), q = fold(f.q);
   const inR = d => d >= from && d <= to;
-  const rows = [];
+  const rows = []; let expected = 0;
   for (const k of monthsIn(a, b)) {
     const mo = month(k);
     if (mo && f.src.plan && k <= cur) {
       for (const l of monthLines(k)) {
         if (isIncomeCat(l.cat)) continue;
-        const v = expA(l); if (!v) continue;
         const ld = lineDate(k, l.due); if (!inR(ld)) continue;
+        // a folyó időszakban csak a ténylegesen kifizetett (beírt vagy lezárt) tétel számít költésnek, a többi „még várható”
+        if (k >= cur && l.a == null && !l.done) { if (!(SUBS[l.kind === "item" ? itemSc(itemById(l.id)) : "egyeb.egyeb"] || {}).ns) expected += l.p || 0; continue; }
+        const v = k >= cur ? (l.a != null ? l.a : l.p) : expA(l); if (!v) continue;
         const it = l.kind === "item" ? itemById(l.id) : null;
         const sc = it ? itemSc(it) : extraSc(mo.extras[l.id] || {});
         rows.push({ k, d: null, ld, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, p: l.kind === "item" ? l.p : null, kind: l.kind, lid: l.id, open: !l.done && l.a == null });
@@ -2217,7 +2219,9 @@ function statRows(){
     const d = (l.at || "").slice(0, 10); if (l.t !== "fee" || !inR(d)) continue;
     rows.push({ k: mkOfDate(d), d, src: "spend", who: "geza", sc: "bank.kartya", name: (l.note || "Kártyadíj") + " (" + dt.name + ")", shop: dt.name, pay: dt.id, amt: +l.amt || 0 });
   }
-  return rows.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!q || fold(r.name + " " + r.shop + " " + (r.note || "")).includes(q)));
+  const out = rows.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!q || fold(r.name + " " + r.shop + " " + (r.note || "")).includes(q)));
+  out.expected = (f.g || q) ? 0 : expected;
+  return out;
 }
 /* egyszeri: az „Egyéb”-be került banki díjak átsorolása */
 function migrateBank(){
@@ -2267,7 +2271,7 @@ function renderStats(){
       <button class="chipbtn" data-sfns aria-pressed="${f.ns}">Nem költés is</button></div>
   </div>`;
   h += `<div class="kpis k5">
-    <div class="kpi"><div class="k">Összes költés</div><div class="v">${fmt(total)}</div><div class="s">${nM > 1 ? "havi átlag " + fmt(total / nM) : spendRows.length + " tétel"}</div></div>
+    <div class="kpi"><div class="k">Összes költés</div><div class="v">${fmt(total)}</div><div class="s">${nM > 1 ? "havi átlag " + fmt(total / nM) : spendRows.length + " tétel"}${rows.expected ? ` · még várható ${fmt(rows.expected)} (tervezett, nincs kifizetve)` : ""}</div></div>
     <div class="kpi"><div class="k">Nasi és alkohol</div><div class="v">${fmt(junk)}</div><div class="s">${etk ? (junk / etk * 100).toFixed(0) + "% az étkezésből" : "–"}${nM > 1 ? " · havi " + fmt(junk / nM) : ""}</div></div>
     <div class="kpi"><div class="k">Rögzített költés</div><div class="v">${fmt(own.reduce((s, r) => s + r.amt, 0))}</div><div class="s">${nRec} blokk / bevitel</div></div>
     <div class="kpi"><div class="k">Neked maradt / rögzítve</div><div class="v">${left ? Math.round(ownG / left * 100) + "%" : "–"}</div><div class="s">${fmt(ownG)} / ${fmt(left)}</div></div>
