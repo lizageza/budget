@@ -401,6 +401,8 @@ table.t td.tx.nm{min-width:160px}
 .hbtn{font:500 12.5px var(--f-body);border-radius:7px;padding:5px 10px;cursor:pointer;border:1px solid color-mix(in srgb,var(--accent-ink) 40%,transparent);background:color-mix(in srgb,var(--accent-ink) 16%,transparent);color:inherit}
 .hbtn.ghost{background:transparent}
 .hbtn:hover{background:color-mix(in srgb,var(--accent-ink) 26%,transparent)}
+.epcard{border-top:0}
+.card>.epcard summary{border-radius:var(--r)}
 
 </style>
 </head>
@@ -622,6 +624,7 @@ function mergeData(A, B){
   out.assets = {};
   for (const g of ["accounts","stocks","crypto","debts","snaps"]) out.assets[g] = mergeObj(aa[g], bb[g], "assets/" + g, del);
   out.assets.px = newer(aa.px, bb.px);
+  out.assets.ep = newer(aa.ep, bb.ep);
   for (const g of ["spend","learn","statmap","periods"]) out[g] = mergeObj(A[g], B[g], g, del);
   return out;
 }
@@ -966,14 +969,14 @@ const TAX = [
   { id: "haz",    name: "Háztartás", c: "--s4", subs: [["drog","Háztartás és drogéria"],["karb","Karbantartás, javítás, barkács"]] },
   { id: "koz",    name: "Közlekedés", c: "--s5", subs: [["uza","Üzemanyag"],["ado","Autó adó"],["auto","Autó egyéb"]] },
   { id: "gyer",   name: "Gyerekek", c: "--s6", subs: [["isk","Iskola, iskolai étkezés"],["edz","Edzés, különóra"],["zseb","Zsebpénz"],["berl","Bérlet"],["vas","Gyerek vásárlás"]] },
-  { id: "eg",     name: "Egészség és biztosítás", c: "--s7", subs: [["ep","Egészségpénztár"],["bizt","Biztosítás"],["gyogy","Gyógyszer, patika, orvos"]] },
+  { id: "eg",     name: "Egészség és biztosítás", c: "--s7", subs: [["bizt","Biztosítás"],["gyogy","Gyógyszer, patika, orvos"]] },
   { id: "hobbi",  name: "Hobbi és szórakozás", c: "--s8", subs: [["retro","Hobbi, gyűjtés"],["szor","Szórakozás, program"],["tech","Online / tech vásárlás"]] },
   { id: "lak",    name: "Lakáshitel", c: "--s9", subs: [["fund","Lakáshitel-törlesztés"]] },
   { id: "ruha",   name: "Ruha", c: "--s9", subs: [["ruha","Ruha, cipő"]] },
   { id: "vall",   name: "Vállalkozói", c: "--s9", subs: [["ado","Iparűzési adó"],["kam","Kamarai díj"]] },
   { id: "egyeb",  name: "Egyéb", c: "--s9", subs: [["egyeb","Egyéb"]] },
   { id: "bank",   name: "Banki díjak", c: "--s9", subs: [["utal","Utalási, számlavezetési díj"],["kartya","Kártyadíj, kamat"]] },
-  { id: "megt",   name: "Megtakarítás", ns: true, subs: [["megt","Megtakarítás"]] },
+  { id: "megt",   name: "Megtakarítás", ns: true, subs: [["megt","Megtakarítás"],["ep","Egészségpénztár-befizetés"]] },
   { id: "hitel",  name: "Hitelkártya-törlesztés", ns: true, subs: [["kartya","Hitelkártya-törlesztés"]] },
   { id: "reka",   name: "Rékának utalás", ns: true, subs: [["reka","Rékának utalás"]] }
 ];
@@ -998,7 +1001,7 @@ function itemScAuto(it){
   if (has(/villany|aram/)) return "rezsi.villany";
   if (has(/ viz |csatorna/)) return "rezsi.viz";
   if (has(/hulladek|szemet/)) return "rezsi.hull";
-  if (has(/egeszsegpenztar|\bep\b/)) return "eg.ep";
+  if (has(/egeszsegpenztar|\bep\b/)) return "megt.ep";
   if (has(/biztositas/)) return "eg.bizt";
   if (has(/telefon|internet|mobil| net |telekom|telenor|vodafone|yettel|digi /)) return "komm.tel";
   if (has(/fundamenta|lakastakarek|lakashitel|jelzalog|torleszto/)) return "lak.fund";
@@ -1008,7 +1011,7 @@ function itemScAuto(it){
   if (has(/hobbi/)) return "hobbi.retro";
   return guessSc(it.name) || "egyeb.egyeb";
 }
-function itemSc(it){ const m = D().statmap || {}; return (m[it.id] && m[it.id].sc) || itemScAuto(it); }
+function itemSc(it){ const m = D().statmap || {}, s = m[it.id] && m[it.id].sc; return (s && SUBS[s] && s !== "eg.ep") ? s : itemScAuto(it); }
 function extraSc(x){ if (x.sc) return x.sc; if (x.debt) return "hitel.kartya"; if (x.cat === "megt") return "megt.megt"; return guessSc(x.name) || "egyeb.egyeb"; }
 
 /* ================= kulcsszavas besorolás (internet nélkül is) ================= */
@@ -1053,7 +1056,7 @@ function scOptions(sel, nsToo){
 }
 
 /* ================= költések (blokk, gyors bevitel) ================= */
-const PAY = () => [["rev","Revolut"],["raif","Raiffeisen"],["cash","Készpénz"], ...Object.values(D().assets.debts).map(d => [d.id, d.name + "-kártya"])];
+const PAY = () => [["rev","Revolut"],["raif","Raiffeisen"],["cash","Készpénz"],["ep","Egészségpénztár"], ...Object.values(D().assets.debts).map(d => [d.id, d.name + "-kártya"])];
 const payName = id => (PAY().find(p => p[0] === id) || [id, id])[1];
 const CURS = ["HUF","EUR","USD"];
 const curSym = c => c === "HUF" ? "Ft" : c === "EUR" ? "€" : "$";
@@ -1390,6 +1393,7 @@ const ICON = {
   camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.5"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4"/></svg>',
   warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="vertical-align:-2px"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/><path d="M9 12h2l1-2 1 4 1-2h1"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'
 };
 let toastT = null;
@@ -1578,6 +1582,7 @@ function renderMonth(){
     </li>`).join("")}</ul>` : `<div class="empty">Minden tétel rendezve ebben a hónapban.</div>`;
   h += `</div>`;
   h += debtCard();
+  h += epCard();
   if (!mo.meta.closed) h += `<div><button class="btn" data-act="mclose">Hónap lezárása…</button></div>`;
   else h += `<div><button class="btn" data-act="mreopen">Hónap újranyitása</button></div>`;
   h += `</div><div class="col"><div class="card">`;
@@ -1661,6 +1666,7 @@ function setLine(k, kind, id, patch){
   const n = { ...cur, ...patch };
   for (const key of Object.keys(n)) if (n[key] === null || n[key] === undefined || n[key] === false || n[key] === "") delete n[key];
   if (n.p == null) n.p = 0;
+  if (n.a != null || n.done) { if (!n.paidAt) n.paidAt = nowIso(); } else delete n.paidAt;   // mikor lett kifizetve (az EP-egyenleghez)
   box[id] = stamp(n);
   persist(); renderAll();
 }
@@ -1850,6 +1856,54 @@ document.addEventListener("change", e => {
   }
 });
 
+/* ================= egészségpénztár ================= */
+const EP = () => D().assets.ep || null;
+const epRate = () => (+(D().settings.epRate) || 93.5) / 100;
+/* a havi EP-befizetés tétele: amelyik a statisztikában „Egészségpénztár-befizetés” */
+function epItem(){ return items().find(it => !it.off && itemSc(it) === "megt.ep") || items().find(it => itemSc(it) === "megt.ep") || null; }
+/* az egyenleg megadása óta: kifizetett havi befizetések, eseti befizetések, adó-visszatérítés, EP-ből fizetett költések */
+function epPending(){
+  const ep = EP(); if (!ep) return { rows: [], sum: 0 };
+  const base = ep.baseAt || "", rows = [], it = epItem(), r = epRate();
+  if (it) for (const k of monthKeys()) { const ln = month(k).lines[it.id]; if (ln && ln.paidAt && ln.paidAt > base) { const v = +(ln.a ?? ln.p) || 0; if (v) rows.push({ at: ln.paidAt, txt: `Havi befizetés (${mkShort(k)}): ${fmt(v)} × ${fmtN(r * 100, 1)}%`, amt: Math.round(v * r) }); } }
+  for (const [lid, l] of Object.entries(ep.log || {})) if ((l.at || "") > base) rows.push({ at: l.at, lid, txt: l.t === "tax" ? "Adó-visszatérítés" : `Eseti befizetés: ${fmt(l.amt)} × ${fmtN(r * 100, 1)}%`, amt: l.t === "tax" ? +l.amt : Math.round(+l.amt * r) });
+  for (const s of spends()) if (s.pay === "ep" && (s.who || "geza") === "geza" && (s.at || "") > base) rows.push({ at: s.at, txt: s.shop || (s.lines[0] || {}).n || "Költés", amt: -spendHuf(s) });
+  rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+  return { rows, sum: rows.reduce((x, y) => x + y.amt, 0) };
+}
+function epBalance(){ const ep = EP(); return ep && ep.start != null ? (+ep.start || 0) + epPending().sum : null; }
+function epSet(v){ D().assets.ep = stamp({ ...(EP() || {}), start: Math.round(v), baseAt: nowIso(), log: {} }); }
+function epCard(){
+  const ep = EP(), bal = epBalance(), pd = epPending(), open = !!S.open["ep"];
+  return `<div class="card"><details class="dcard epcard" data-ep ${open ? "open" : ""}><summary><span class="day">${ICON.heart}</span><span class="nm">Egészségpénztár<span class="sub">${bal == null ? "add meg a mostani egyenleget" : "külön számla, a teljes vagyonba nem számít"}</span></span>
+      <span class="amt num">${bal == null ? "–" : fmt(bal)}${pd.rows.length ? `<span class="pend" title="Az utolsó egyenleg-megadás óta">${pd.sum >= 0 ? "+" : "−"}${fmt(Math.abs(pd.sum), { noUnit: true })}</span>` : ""}</span><span></span></summary>
+    <div class="dbody">
+      ${pd.rows.length ? `<div class="pendbox"><div class="k">Az egyenleg megadása óta${ep && ep.baseAt ? " (" + new Date(ep.baseAt).toLocaleDateString("hu-HU", { month: "short", day: "numeric" }) + ")" : ""}: ${pd.sum >= 0 ? "+" : "−"}${fmt(Math.abs(pd.sum))}</div>
+        ${pd.rows.slice(0, 8).map(r => `<div class="prow"><span class="muted num">${new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" })}</span><span class="t">${esc(r.txt)}</span><span class="num ${r.amt >= 0 ? "pos" : "neg"}">${r.amt >= 0 ? "+" : "−"}${fmt(Math.abs(r.amt), { noUnit: true })}${r.lid ? ` <button class="icon-btn" data-act="eprm" data-id="${r.lid}" aria-label="Törlés">${ICON.trash}</button>` : ""}</span></div>`).join("")}
+        <p class="muted small" style="margin:6px 0 0">Ezek már benne vannak a fenti egyenlegben. Ha a pénztár szerint is így áll, könyveld be; ha a megadott egyenleg már tartalmazta őket, jelöld így.</p>
+        <div class="actions" style="justify-content:flex-start"><button class="btn sm primary" data-act="epbook">${ICON.check} Bekönyvelem</button><button class="btn sm" data-act="epinc">Már benne volt</button></div></div>` : ""}
+      ${bal != null ? `<div class="two"><div class="field"><label for="epX">Eseti befizetés (bruttó)</label><div class="addline"><input class="inp num" id="epX" inputmode="numeric" placeholder="Ft"><button class="btn" data-act="epx">Hozzáad</button></div></div>
+        <div class="field"><label for="epT">Adó-visszatérítés</label><div class="addline"><input class="inp num" id="epT" inputmode="numeric" placeholder="Ft"><button class="btn" data-act="ept">Hozzáad</button></div></div></div>` : ""}
+      <div class="field"><label for="epB">Egyenleg a pénztár szerint</label><div class="addline"><input class="inp num" id="epB" inputmode="numeric" placeholder="${bal == null ? "Ft" : Math.round(bal)}"><button class="btn" data-act="epbal">Rögzítés</button></div>
+        <span class="muted small">A havi befizetés ${fmtN(epRate() * 100, 1)}%-a kerül a számlára (fedezeti tartalék); ezt magától számolom, amikor a havi sort (${esc((epItem() || { name: "EP" }).name)}) kifizetettnek jelölöd. Az adó-visszatérítés 100%-ban jóváíródik. A hozamot évente az egyenlegközlő alapján írd be ide.</span></div>
+    </div></details></div>`;
+}
+document.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("details.epcard")) S.open["ep"] = e.target.open; }, true);
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-act^=ep]"); if (!a || !a.closest(".epcard")) return;
+  e.preventDefault(); S.open["ep"] = true;
+  const act = a.dataset.act, card = a.closest(".epcard"), val = sel => { const v = parseAmt(card.querySelector(sel).value); return v == null || Number.isNaN(v) ? null : v; };
+  if (act === "epbal") { const v = val("#epB"); if (v == null) return toast("Add meg az egyenleget."); return withUndo(`Egészségpénztár: egyenleg ${fmt(v)}.`, () => epSet(v)); }
+  if (act === "epbook") { const b = epBalance(); return withUndo(`Egészségpénztár: bekönyvelve, ${fmt(b)}.`, () => epSet(b)); }
+  if (act === "epinc") { const b = epBalance() - epPending().sum; return withUndo("Egészségpénztár: a tételek már benne voltak.", () => epSet(b)); }
+  if (act === "epx" || act === "ept") {
+    const v = val(act === "epx" ? "#epX" : "#epT"); if (!v) return toast("Adj meg összeget.");
+    const ep = EP(); D().assets.ep = stamp({ ...ep, log: { ...(ep.log || {}), [uid("e")]: { t: act === "ept" ? "tax" : "extra", amt: v, at: nowIso() } } });
+    persist(); renderAll(); return toast(act === "ept" ? `Adó-visszatérítés: +${fmt(v)}` : `Eseti befizetés: ${fmt(v)}, jóváírás ${fmt(Math.round(v * epRate()))}`);
+  }
+  if (act === "eprm") { const ep = EP(), log = { ...(ep.log || {}) }; delete log[a.dataset.id]; D().assets.ep = stamp({ ...ep, log }); persist(); return renderAll(); }
+});
+
 /* ================= charts (inline SVG) ================= */
 const SERIES = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -1995,7 +2049,8 @@ function renderAssets(){
       <span class="muted">ebből forint / euró / dollár készpénz</span><span class="num muted">${fmt(t.HUF, { noUnit: true })} / ${fmt(t.EUR, { noUnit: true })} / ${fmt(t.USD, { noUnit: true })}</span>
       <span>Összes vagyon</span><span class="num">${fmt(t.total)}</span>
       <span>Tartozások</span><span class="num neg">−${fmt(t.debts)}</span>
-      <span class="big">Nettó vagyon</span><span class="num big">${fmt(t.net)}</span></div>
+      <span class="big">Nettó vagyon</span><span class="num big">${fmt(t.net)}</span>
+      ${epBalance() != null ? `<span class="muted">Egészségpénztár (külön, nem számít bele)</span><span class="num muted">${fmt(epBalance())}</span>` : ""}</div>
     <div class="chart" id="nwChart" style="margin-top:14px"></div></div></div>`;
   h += `<div class="agrid">`;
   for (const [id, a] of Object.entries(A.accounts)) {
@@ -2006,6 +2061,7 @@ function renderAssets(){
     }
     h += `</div><div class="sum"><span>Összesen</span><span class="num">${fmt(t[id])}</span></div></div></div>`;
   }
+  h += epCard();
   // stocks
   h += `<div class="card"><div class="hd"><h2>Részvények</h2><span class="spacer" style="flex:1"></span><button class="btn sm" data-act="addstock">${ICON.plus}</button></div><div class="tblwrap"><table class="t"><thead><tr><th>Jel</th><th>Darab</th><th>Ár (USD)</th><th>Érték (USD)</th><th>Érték (Ft)</th><th></th></tr></thead><tbody>`;
   for (const [id, s] of Object.entries(A.stocks)) { const p = stockPrice(s); h += `<tr><td><input class="inp" style="width:80px" data-f="stock|${id}|sym" value="${esc(s.sym)}"></td><td><input class="inp num" style="width:80px" inputmode="decimal" data-f="stock|${id}|qty" value="${s.qty ?? ""}"></td><td><input class="inp num" style="width:96px" inputmode="decimal" data-f="stock|${id}|usd" value="${p || ""}" title="${priceIsManual(s, (px.stock || {})[(s.sym || "").toUpperCase()]) ? "kézi ár (a következő élő ár felülírja)" : "élő / utolsó ár"}"></td><td class="num">$${fmtN((+s.qty || 0) * p, 2)}</td><td class="num">${fmt((+s.qty || 0) * p * usd)}</td><td><button class="icon-btn" data-act="del" data-g="stocks" data-id="${id}" aria-label="Törlés">${ICON.trash}</button></td></tr>`; }
