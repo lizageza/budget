@@ -1145,7 +1145,7 @@ function receiptSchema(){
 async function gemReceipt(files){
   const prompt = `You read Hungarian shop receipts, invoices and online order confirmations. The ${files.length} attached file(s) belong to ONE purchase. If several photos are given they are consecutive parts of one long receipt and may overlap: include every product line exactly once.
 Return every purchased product line with its final line amount (quantity × unit price, after any line discount). Put discounts/coupons (KEDVEZMÉNY, kupon, akció) as separate lines with a NEGATIVE amount, or subtract them from the line they belong to. Ignore VAT summaries (ÁFA), payment method lines, card data, change (visszajáró), NAV/AP codes and loyalty points.
-Keep product names readable (expand obvious abbreviations, keep brand names, Hungarian language). shop = store or webshop name. date = purchase date. total = final amount paid.
+Keep product names readable (expand obvious abbreviations, keep brand names, Hungarian language). shop = store or webshop name. date = purchase date as YYYY-MM-DD; today is ${today()} and the purchase is almost always within the last few weeks, so read the year carefully (Hungarian receipts print e.g. 2026.10.10. or 26.10.10). total = final amount paid.
 Categories (use the code):
 ${CAT_HELP()}
 ${CAT_RULES}`;
@@ -1265,6 +1265,7 @@ function openReceipt(){
   openDrawer(() => "Blokk beolvasása", body, dyn);
   const add = async list => {
     for (const f of list) { try { RC.files.push(await prepFile(f)); } catch (x) { toast(x.message); } }
+    DR.guard = RC.files.length > 0;
     if (DR.open) DR.refresh();
   };
   DR.handler = async (what) => {
@@ -1278,8 +1279,11 @@ function openReceipt(){
       try {
         const r = await gemReceipt(RC.files);
         const lines = (r.items || []).filter(x => x && x.name).map(x => ({ n: x.name, a: Math.round((+x.amount || 0) * 100) / 100, sc: SUBS[x.cat] ? (guessScLearned(x.name) || x.cat) : (guessSc(x.name) || "egyeb.egyeb") }));
-        const d = /^\d{4}-\d\d-\d\d$/.test(r.date || "") && r.date <= today() ? r.date : today();
-        openSpendEdit(null, { files: RC.files, d, shop: r.shop || "", cur: CURS.includes(r.currency) ? r.currency : "HUF", total: +r.total || null, lines: lines.length ? lines : [{ n: "", a: null, sc: "etk.elel" }], src: "receipt" });
+        // a dátum csak akkor fogadható el, ha az elmúlt 60 napban van; különben a mai nap, és figyelmeztetés
+        const lim = new Date(); lim.setDate(lim.getDate() - 60);
+        const okD = /^\d{4}-\d\d-\d\d$/.test(r.date || "") && r.date <= today() && r.date >= dstr(lim);
+        const d = okD ? r.date : today(), dateWarn = !okD && r.date ? r.date : null;
+        openSpendEdit(null, { files: RC.files, d, shop: r.shop || "", cur: CURS.includes(r.currency) ? r.currency : "HUF", total: +r.total || null, lines: lines.length ? lines : [{ n: "", a: null, sc: "etk.elel" }], src: "receipt", dateWarn });
       } catch (x) { RC.busy = false; if (DR.open) DR.refresh(); toast(x.message); console.warn(x); }
     }
   };
@@ -1308,7 +1312,7 @@ function openSpendEdit(id, init){
   };
   openDrawer(() => id ? "Költés szerkesztése" : "Blokk ellenőrzése", () => `
     <div class="two"><div class="field"><label for="eShop">Bolt</label><input class="inp" id="eShop" value="${esc(st.shop || "")}" autocomplete="off"></div>
-      <div class="field"><label for="eD">Dátum</label><input class="inp" id="eD" type="date" value="${esc(st.d || today())}"></div></div>
+      <div class="field"><label for="eD">Dátum</label><input class="inp" id="eD" type="date" value="${esc(st.d || today())}">${st.dateWarn ? `<span class="warnline" style="margin:0">${ICON.warn} A blokkon talált dátum (${esc(st.dateWarn)}) nem tűnik valósnak, a mai napot írtam be. Ellenőrizd!</span>` : ""}</div></div>
     <div class="field"><label>Fizetés</label><div class="seg wrap" id="ePay">${PAY().map(([k, n]) => `<button data-dr="pay:${k}" aria-pressed="${st.pay === k}">${esc(n)}</button>`).join("")}</div></div>
     <div class="two"><div class="field"><label for="eCur">Pénznem</label><select class="inp" id="eCur">${CURS.map(c => `<option ${c === st.cur ? "selected" : ""}>${c}</option>`).join("")}</select></div>
       <div class="field"><label for="eW">Kié</label><select class="inp" id="eW"><option value="geza" ${st.who !== "reka" ? "selected" : ""}>Enyém</option><option value="reka" ${st.who === "reka" ? "selected" : ""}>Rékáé</option></select></div></div>
@@ -1344,19 +1348,22 @@ function openSpendEdit(id, init){
       if (!rec.note) delete rec.note; if (rec.total == null) delete rec.total;
       LS.set("lastPay", st.pay);
       const files = init && init.files || [];
-      closeDrawer();
+      DR.guard = false; closeDrawer();
+      saveSpend(sid, rec);                                  // előbb a költés mentődik, a fotók utána töltődnek fel
+      const mk = mkOfDate(rec.d), other = mk !== S.mk;
+      toast(`Mentve: ${rec.shop || lines[0].n}, ${fmt(spendHuf(D().spend[sid]))}${other ? ` · a dátum (${rec.d.replace(/-/g, ".")}.) miatt ${(() => { const n = HU_MONTHS[mkParse(mk).m - 1] + "i"; return (/^[aáeéiíoóöőuúüű]/.test(n) ? "az " : "a ") + n; })()} időszakba került (Hónap fül, lapozz oda)` : ""}`);
       if (files.length && ST.store && D().settings.keepPhotos !== false) {
-        const sub = "blokkok/" + mkOfDate(rec.d), names = [];
+        const sub = "blokkok/" + mk, names = [];
+        status(`Fotók feltöltése (${files.length})…`);
         for (let i = 0; i < files.length; i++) {
           const nm = `${rec.d}-${(rec.shop || "blokk").replace(/[^\w\-áéíóöőúüűÁÉÍÓÖŐÚÜŰ]+/g, "_").slice(0, 24)}-${sid.slice(-4)}-${i + 1}.${files[i].ext}`;
-          try { await ST.store.writeFile(sub, nm, files[i].blob, files[i].mime); names.push(sub + "/" + nm); } catch (x) { console.warn(x); toast("A kép mentése nem sikerült: " + x.message); }
+          try { await ST.store.writeFile(sub, nm, files[i].blob, files[i].mime); names.push(sub + "/" + nm); } catch (x) { console.warn(x); toast("A fotó mentése nem sikerült: " + x.message); }
         }
-        rec.files = names;
+        if (names.length && D().spend[sid]) { D().spend[sid] = stamp({ ...D().spend[sid], files: [...(D().spend[sid].files || []), ...names] }); persist(); renderAll(); }
       }
-      saveSpend(sid, rec);
-      toast(`Mentve: ${rec.shop || lines[0].n}, ${fmt(spendHuf(D().spend[sid]))}`);
     }
   };
+  if (!id) DR.guard = true;                                  // új blokk: véletlen bezárás ellen
 }
 async function viewSpendFile(path){
   if (!ST.store || !ST.store.fileUrl) return toast("A fájl csak mentett tárolással nyitható meg.");
@@ -1683,17 +1690,21 @@ function payLine(k, kind, id){
 const DR = { open: false, refresh: null };
 function openDrawer(title, bodyFn, dynFn){
   const d = $("#drawer");
-  DR.open = true;
+  DR.open = true; DR.guard = false; DR.armed = false;
   d.innerHTML = `<div class="dh"><h3 id="drTitle">${title()}</h3><button class="icon-btn" data-dr="close" aria-label="Bezárás">${ICON.close}</button></div><div class="db">${bodyFn()}${dynFn ? `<div id="drDyn" style="display:grid;gap:14px">${dynFn()}</div>` : ""}</div>`;
   // frissítéskor csak a számolt rész cserélődik, hogy a beviteli mezők (és a fókusz) megmaradjanak
   DR.refresh = () => { if (dynFn) { const el = $("#drDyn"); if (el) el.innerHTML = dynFn(); } $("#drTitle").innerHTML = title(); };
   d.classList.add("on"); $("#scrim").classList.add("on");
   setTimeout(() => { const f = d.querySelector("[autofocus]"); if (f && matchMedia("(min-width:761px)").matches) f.focus(); }, 60);
 }
-function closeDrawer(){ DR.open = false; DR.refresh = null; DR.handler = null; $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); }
-$("#scrim").addEventListener("click", closeDrawer);
-document.addEventListener("keydown", e => { if (e.key === "Escape" && DR.open) closeDrawer(); });
-$("#drawer").addEventListener("click", e => { const b = e.target.closest("[data-dr]"); if (!b) return; if (b.dataset.dr === "close") return closeDrawer(); if (DR.handler) DR.handler(b.dataset.dr, b, e); });
+function tryCloseDrawer(){
+  if (DR.guard && !DR.armed) { DR.armed = true; setTimeout(() => DR.armed = false, 4000); return toast("Nincs mentve! Koppints még egyszer a bezáráshoz, vagy nyomd meg a Mentés gombot."); }
+  closeDrawer();
+}
+function closeDrawer(){ DR.guard = false; DR.armed = false; DR.open = false; DR.refresh = null; DR.handler = null; $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); }
+$("#scrim").addEventListener("click", tryCloseDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && DR.open) tryCloseDrawer(); });
+$("#drawer").addEventListener("click", e => { const b = e.target.closest("[data-dr]"); if (!b) return; if (b.dataset.dr === "close") return tryCloseDrawer(); if (DR.handler) DR.handler(b.dataset.dr, b, e); });
 $("#drawer").addEventListener("change", e => { if (DR.handler && e.target.dataset.fk) DR.handler("change:" + e.target.dataset.fk, e.target, e); });
 $("#drawer").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("input.inp")) { e.preventDefault(); if (e.target.dataset.fk === "add") { DR.handler && DR.handler("add", e.target, e); } else e.target.blur(); } });
 
