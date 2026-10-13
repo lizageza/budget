@@ -540,8 +540,9 @@ function monthLines(k){
   }
   return out;
 }
-/* A kiadás „várható tény” értéke: a beírt tény, ennek hiányában a terv. */
-function expA(l){ return l.a != null ? l.a : l.p; }   // ha van beírt tény, az számít; egyébként a terv
+/* A kiadás várható értéke („módosított terv”): lezárt sornál a tény; nyitott sornál a terv,
+   kivéve, ha a tény már meghaladta – mert nyitott sorra még jöhet költés. */
+function expA(l){ return l.done ? (l.a != null ? l.a : l.p) : Math.max(l.p || 0, l.a || 0); }
 function incA(l){ return l.a != null ? l.a : 0; }   // bevételnél a tény csak a ténylegesen beírt összeg
 function remaining(l){ return l.done ? 0 : Math.max(l.p - (l.a || 0), 0); }
 function rekaOf(bal){
@@ -2373,19 +2374,22 @@ function lineDate(k, due){
 function statRows(){
   const f = S.sf, { from, to, a, b } = statDates(), cur = currentMk(), q = fold(f.q);
   const inR = d => d >= from && d <= to;
-  const rows = []; let expected = 0;
+  const rows = [], planInfo = []; let expected = 0;
   for (const k of monthsIn(a, b)) {
     const mo = month(k);
     if (mo && f.src.plan && k <= cur) {
       for (const l of monthLines(k)) {
         if (isIncomeCat(l.cat)) continue;
         const ld = lineDate(k, l.due); if (!inR(ld)) continue;
-        // a folyó időszakban csak a ténylegesen kifizetett (beírt vagy lezárt) tétel számít költésnek, a többi „még várható”
-        if (k >= cur && l.a == null && !l.done) { if (!(SUBS[l.kind === "item" ? itemSc(itemById(l.id)) : "egyeb.egyeb"] || {}).ns) expected += l.p || 0; continue; }
-        const v = k >= cur ? (l.a != null ? l.a : l.p) : expA(l); if (!v) continue;
         const it = l.kind === "item" ? itemById(l.id) : null;
         const sc = it ? itemSc(it) : extraSc(mo.extras[l.id] || {});
-        rows.push({ k, d: null, ld, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, p: l.kind === "item" ? l.p : null, kind: l.kind, lid: l.id, open: !l.done && l.a == null });
+        // lezárt időszakban a várható érték számít (kifizetettnek vesszük); a folyó időszakban csak a ténylegesen kifizetett,
+        // a nyitott sorok hátralévő része „még várható”
+        const p = l.p || 0, paid = k < cur ? expA(l) : (l.a != null ? l.a : (l.done ? p : 0)), rem = k < cur || l.done ? 0 : Math.max(p - (l.a || 0), 0);
+        if (p || paid || rem) planInfo.push({ sc, name: l.name, p, paid, rem });
+        if (!(SUBS[sc] || {}).ns) expected += rem;
+        const v = paid; if (!v) continue;
+        rows.push({ k, d: null, ld, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, kind: l.kind, lid: l.id });
       }
       if (f.ns) { const c = calc(k), rv = c.rekaPaid ?? (k < cur ? c.reka : 0), ld = (mo.meta.rekaAt || "").slice(0, 10) || dstr(period(k).start); if (rv && inR(ld)) rows.push({ k, d: null, ld, src: "plan", who: "plan", sc: "reka.reka", name: "Rékának utalás", shop: "", pay: "raif", amt: rv }); }
     }
@@ -2403,6 +2407,7 @@ function statRows(){
   }
   const out = rows.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!q || fold(r.name + " " + r.shop + " " + (r.note || "")).includes(q)));
   out.expected = (f.g || q) ? 0 : expected;
+  out.plan = planInfo.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!q || fold(r.name).includes(q)));
   return out;
 }
 /* egyszeri: az „Egyéb”-be került banki díjak átsorolása */
@@ -2480,11 +2485,13 @@ function renderStats(){
     <div class="legend"><span><i style="background:${cssVar("--s2")}"></i>Nasi és üdítő</span><span><i style="background:${cssVar("--s7")}"></i>Alkohol</span></div>
     ${junkRows.length ? `<div class="bd" style="padding-top:0"><div class="k" style="margin-bottom:6px">Leggyakoribb</div>${topTable(junkRows, "name", 6)}</div>` : ""}</div>`;
   // terv és tény
-  const planRows = rows.filter(r => r.src === "plan" && r.p != null);
+  const planRows = f.src.plan ? rows.plan : [];
   if (planRows.length) {
-    const pg = {}; for (const r of planRows) { const g = groupOf(r.sc); pg[g] = pg[g] || { p: 0, a: 0 }; pg[g].p += r.p; pg[g].a += r.amt; }
-    h += `<div class="card"><div class="hd"><h2>Tervezett tételek: terv és tény</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Csoport</th><th>Terv</th><th>Tény / várható</th><th>Eltérés</th></tr></thead><tbody>
-      ${Object.entries(pg).sort((x, y) => y[1].a - x[1].a).map(([g, o]) => `<tr><td>${esc(taxGroup(g).name)}</td><td class="num">${fmt(o.p, { noUnit: true })}</td><td class="num">${fmt(o.a, { noUnit: true })}</td><td class="num ${o.a > o.p ? "neg" : o.a < o.p ? "pos" : ""}">${fmt(o.a - o.p, { sign: true, noUnit: true })}</td></tr>`).join("")}</tbody></table></div></div>`;
+    const pg = {}, T = { p: 0, paid: 0, rem: 0 };
+    for (const r of planRows) { const g = groupOf(r.sc), o = pg[g] = pg[g] || { p: 0, paid: 0, rem: 0 }; o.p += r.p; o.paid += r.paid; o.rem += r.rem; T.p += r.p; T.paid += r.paid; T.rem += r.rem; }
+    const row = (n, o, cls) => { const d = o.paid + o.rem - o.p; return `<tr class="${cls || ""}"><td>${n}</td><td class="num">${fmt(o.p, { noUnit: true })}</td><td class="num">${fmt(o.paid, { noUnit: true })}</td><td class="num muted">${o.rem ? fmt(o.rem, { noUnit: true }) : "–"}</td><td class="num ${d > 0 ? "neg" : d < 0 ? "pos" : ""}">${d ? fmt(d, { sign: true, noUnit: true }) : "0"}</td></tr>`; };
+    h += `<div class="card"><div class="hd"><h2>Tervezett tételek</h2><span class="muted small">eltérés = fizetve + még várható − terv</span></div><div class="tblwrap"><table class="t"><thead><tr><th>Csoport</th><th>Terv</th><th>Fizetve</th><th>Még várható</th><th>Eltérés</th></tr></thead><tbody>
+      ${Object.entries(pg).sort((x, y) => (y[1].paid + y[1].rem) - (x[1].paid + x[1].rem)).map(([g, o]) => row(esc(taxGroup(g).name), o)).join("")}</tbody><tfoot>${row("Összesen", T)}</tfoot></table></div></div>`;
   }
   // boltok, tételek, fizetés
   const sp = rows.filter(r => r.src === "spend");
