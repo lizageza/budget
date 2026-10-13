@@ -564,7 +564,8 @@ function calc(k){
   r.rekaPaid = mo.meta && mo.meta.rekaPaid != null ? +mo.meta.rekaPaid : null;
   r.revolut = mo.meta && mo.meta.revolut != null && mo.meta.revolut !== "" ? +mo.meta.revolut : null;
   r.spendRev = spendRevAfter(k);
-  r.keret = r.revolut == null ? null : r.revolut - r.revOpen - r.spendRev.sum;
+  r.incRev = incomeRevAfter(k);
+  r.keret = r.revolut == null ? null : r.revolut - r.revOpen - r.spendRev.sum + r.incRev.sum;
   return r;
 }
 
@@ -923,7 +924,7 @@ function debtPending(dt){
   const base = dt.baseAt || "", rows = [];
   for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza" && (s.at || "") > base) rows.push({ at: s.at, txt: s.shop || (s.lines[0] || {}).n || "Költés", amt: spendHuf(s) });
   for (const l of Object.values(dt.log || {})) if ((l.at || "") > base) rows.push({ at: l.at, txt: (l.t === "fee" ? "Díj" : "Költés") + (l.note ? ": " + l.note : ""), amt: +l.amt || 0 });
-  for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.debt === dt.id && (x.at || x.u || "") > base) rows.push({ at: x.at || x.u, txt: "Eseti törlesztés", amt: -(+(x.a ?? x.p) || 0) });
+  for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.debt === dt.id && (x.at || x.u || "") > base) rows.push({ at: x.at || x.u, txt: x.inc ? "Visszatérítés: " + (x.name || "") : "Eseti törlesztés", amt: -(+(x.a ?? x.p) || 0) });
   rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
   return { rows, sum: rows.reduce((s, r) => s + r.amt, 0) };
 }
@@ -1071,6 +1072,40 @@ function spendRevAfter(k){
   let sum = 0, n = 0;
   for (const s of spendsOf(k, "geza")) if (s.pay === "rev" && (s.at || "") > at && (s.d || "") >= day) { sum += spendHuf(s); n++; }
   return { sum, n };
+}
+/* a Revolut-egyenleg megadása után érkezett eseti bevételek (pl. visszatérítés Revolutra) */
+function incomeRevAfter(k){
+  const mo = month(k); if (!mo || !mo.meta.revAt) return { sum: 0, n: 0 };
+  let sum = 0, n = 0;
+  for (const x of Object.values(mo.extras)) if (x.inc && x.to === "rev" && (x.at || "") > mo.meta.revAt) { sum += +x.a || 0; n++; }
+  return { sum, n };
+}
+/* eseti bevétel: név, összeg, hova érkezett (mint a költéseknél), dátum */
+function openIncome(k, id){
+  const mo = month(k), old = id ? mo.extras[id] : null;
+  let to = old ? old.to || "raif" : LS.get("lastIncTo", "rev");
+  openDrawer(() => id ? "Eseti bevétel" : "Új eseti bevétel", () => `
+    <div class="field"><label for="iN">Megnevezés</label><input class="inp" id="iN" value="${esc(old ? old.name : "")}" placeholder="pl. visszatérítés, eladás" autocomplete="off" autofocus></div>
+    <div class="two"><div class="field"><label for="iA">Összeg</label><input class="inp num" id="iA" inputmode="numeric" value="${old ? old.a ?? "" : ""}" placeholder="Ft" autocomplete="off"></div>
+      <div class="field"><label for="iD">Dátum</label><input class="inp" id="iD" type="date" value="${esc(old ? old.d || today() : today())}"></div></div>
+    <div class="field"><label>Hova érkezett</label><div class="seg wrap" id="iTo">${PAY().map(([p, n]) => `<button data-dr="to:${p}" aria-pressed="${to === p}">${esc(n)}</button>`).join("")}</div>
+      <span class="muted small" id="iHint"></span></div>
+    <div class="actions"><button class="btn primary" data-dr="save">${ICON.check} Mentés</button>${id ? `<button class="btn" data-dr="del">${ICON.trash} Törlés</button>` : ""}</div>`);
+  const hint = () => { const h = $("#iHint"); if (!h) return; const dt = D().assets.debts[to];
+    h.textContent = to === "rev" ? "A Szabadon elkölthető keretbe beszámítom; a Revolut-egyenlegnél rákérdezek, hozzáadjam-e." : dt ? `${dt.name}: csökkenti a kártya tartozását.` : to === "ep" ? "Az egészségpénztár egyenlegéhez adom (100%)." : "Csak a havi bevételhez számít."; };
+  setTimeout(hint, 0);
+  DR.handler = (what) => {
+    if (what.startsWith("to:")) { to = what.slice(3); document.querySelectorAll("#iTo button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); return hint(); }
+    if (what === "del") { delete mo.extras[id]; D().deleted[`months/${k}/extras/${id}`] = nowIso(); persist(); closeDrawer(); renderAll(); return toast("Bevétel törölve."); }
+    if (what === "save") {
+      const v = parseAmt($("#iA").value); if (!v || Number.isNaN(v)) return toast("Adj meg összeget.");
+      const name = $("#iN").value.trim() || "Eseti bevétel", dt = D().assets.debts[to];
+      const rec = { name, p: 0, a: v, done: true, cat: catOrder().find(c => c.kind === "income").id, inc: true, to, d: $("#iD").value || today(), at: old ? old.at : nowIso() };
+      if (dt) rec.debt = dt.id;
+      mo.extras[id || uid("x")] = stamp(rec); LS.set("lastIncTo", to);
+      persist(); closeDrawer(); renderAll(); toast(`Bevétel: ${name}, ${fmt(v)} → ${payName(to)}`);
+    }
+  };
 }
 function saveSpend(id, s){
   D().spend = D().spend || {};
@@ -1562,8 +1597,9 @@ function renderMonth(){
       <div class="calc">
         <span>Revolut egyenleg</span><span class="num">${c.revolut == null ? "–" : fmt(c.revolut)}</span>
         <span>Revolutról még fizetendő (${c.revOpenN} tétel)</span><span class="num">−${fmt(c.revOpen)}</span>
-        ${c.spendRev.n ? `<span>Költés az egyenleg megadása óta (${c.spendRev.n})</span><span class="num">−${fmt(c.spendRev.sum)}</span>
-        <span class="herobtns"><button class="hbtn" data-act="revbook" title="Az egyenlegből levonom, a lista kiürül">Levonom az egyenlegből</button><button class="hbtn ghost" data-act="revinc" title="A megadott egyenleg már tartalmazza ezeket">Már benne volt</button></span>` : ""}
+        ${c.spendRev.n ? `<span>Költés az egyenleg megadása óta (${c.spendRev.n})</span><span class="num">−${fmt(c.spendRev.sum)}</span>` : ""}
+        ${c.incRev.n ? `<span>Bevétel az egyenleg megadása óta (${c.incRev.n})</span><span class="num">+${fmt(c.incRev.sum)}</span>` : ""}
+        ${c.spendRev.n || c.incRev.n ? `<span class="herobtns"><button class="hbtn" data-act="revbook" title="Az egyenleget ennyivel módosítom, a lista kiürül">${c.incRev.n && !c.spendRev.n ? "Hozzáadom az egyenleghez" : c.spendRev.n && !c.incRev.n ? "Levonom az egyenlegből" : "Beszámítom az egyenlegbe"}</button><button class="hbtn ghost" data-act="revinc" title="A megadott egyenleg már tartalmazza ezeket">Már benne volt</button></span>` : ""}
       </div>
       <div class="balrow"><label for="revBal">Revolut most:</label><input id="revBal" inputmode="numeric" autocomplete="off" data-f="rev-bal" placeholder="egyenleg Ft-ban" value="${c.revolut == null ? "" : c.revolut}"></div>
       ${c.revolut == null ? `<div class="hint">Írd be a Revolut aktuális egyenlegét, és kiszámolom a keretet.</div>` : mo.meta.revAt ? `<div class="hint">Egyenleg megadva: ${new Date(mo.meta.revAt).toLocaleString("hu-HU", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>` : ""}
@@ -1615,6 +1651,7 @@ function renderMonth(){
         <span class="fl">${l.rev ? '<span class="chip rev" title="Revolutról megy">R</span>' : ""}${l.done ? `<span class="chip done" title="Lezárva">${ICON.check.replace('<svg', '<svg width="12" height="12"')}</span>` : over ? '<span class="chip over" title="Túllépés">!</span>' : ""}</span>
       </div>`;
     }
+    if (inc) h += `<div class="addrow"><button class="btn sm" data-act="addincome">${ICON.plus} Eseti bevétel</button></div>`;
     if (cat.id === "eseti") h += `<div class="addrow"><button class="btn sm" data-act="addextra">${ICON.plus} Eseti kiadás</button></div>`;
     h += `</div></details>`;
   }
@@ -1634,6 +1671,7 @@ $("#view-month").addEventListener("click", e => {
     if (act === "mcreate") { D().months[S.mk] = newMonthFrom(S.mk); persist(); renderAll(); return toast("Terv létrehozva."); }
     if (act === "pay") { const [kind, id] = a.dataset.id.split(/:(.*)/s); return payLine(S.mk, kind, id); }
     if (act === "addextra") return openExtraNew(S.mk);
+    if (act === "addincome") return openIncome(S.mk);
     if (act === "reka") return openReka(S.mk);
     if (act === "px") return refreshPrices(false);
     if (act === "debtadd") return openDebtEntry(a.dataset.id);
@@ -1646,7 +1684,7 @@ $("#view-month").addEventListener("click", e => {
     }
     if (act === "revbook" || act === "revinc") {
       const mo = month(S.mk), c = calc(S.mk), m = { ...mo.meta };
-      if (act === "revbook") { m.revolut = c.revolut - c.spendRev.sum; }
+      if (act === "revbook") { m.revolut = c.revolut - c.spendRev.sum + c.incRev.sum; }
       m.revAt = nowIso();
       return withUndo(act === "revbook" ? `Revolut-egyenleg: ${fmt(m.revolut)}.` : "A költések már benne voltak az egyenlegben.", () => { mo.meta = stamp(m); });
     }
@@ -1661,7 +1699,7 @@ $("#view-month").addEventListener("click", e => {
   const sp = e.target.closest("[data-spend]"); if (sp) return openSpendEdit(sp.dataset.spend);
   if (e.target.closest(".dcard")) return;
   const r = e.target.closest("[data-line]");
-  if (r) { const [kind, id] = r.dataset.line.split(/:(.*)/s); openLine(S.mk, kind, id); }
+  if (r) { const [kind, id] = r.dataset.line.split(/:(.*)/s); const x = kind === "extra" && month(S.mk).extras[id]; if (x && x.inc) return openIncome(S.mk, id); openLine(S.mk, kind, id); }
 });
 $("#view-month").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches(".row")) e.target.click(); });
 
@@ -1878,6 +1916,7 @@ function epPending(){
   const base = ep.baseAt || "", rows = [], it = epItem(), r = epRate();
   if (it) for (const k of monthKeys()) { const ln = month(k).lines[it.id]; if (ln && ln.paidAt && ln.paidAt > base) { const v = +(ln.a ?? ln.p) || 0; if (v) rows.push({ at: ln.paidAt, txt: `Havi befizetés (${mkShort(k)}): ${fmt(v)} × ${fmtN(r * 100, 1)}%`, amt: Math.round(v * r) }); } }
   for (const [lid, l] of Object.entries(ep.log || {})) if ((l.at || "") > base) rows.push({ at: l.at, lid, txt: l.t === "tax" ? "Adó-visszatérítés" : `Eseti befizetés: ${fmt(l.amt)} × ${fmtN(r * 100, 1)}%`, amt: l.t === "tax" ? +l.amt : Math.round(+l.amt * r) });
+  for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.inc && x.to === "ep" && (x.at || "") > base) rows.push({ at: x.at, txt: "Bevétel: " + (x.name || ""), amt: +x.a || 0 });
   for (const s of spends()) if (s.pay === "ep" && (s.who || "geza") === "geza" && (s.at || "") > base) rows.push({ at: s.at, txt: s.shop || (s.lines[0] || {}).n || "Költés", amt: -spendHuf(s) });
   rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
   return { rows, sum: rows.reduce((x, y) => x + y.amt, 0) };
@@ -2482,9 +2521,9 @@ function scDetail(rows, sc){
   const rs = rows.filter(r => r.sc === sc); if (!rs.length) return "";
   return `<div class="bd" style="padding-top:0"><div class="k" style="margin-bottom:6px">${esc(SUBS[sc].name)}: leggyakoribb tételek</div>${topTable(rs, "name", 8)}</div>`;
 }
-function extrasUnclassified(){ const out = []; for (const k of monthKeys()) for (const [id, x] of Object.entries(month(k).extras)) if (!x.sc && !x.debt && x.name) out.push([k, id, x]); return out; }
+function extrasUnclassified(){ const out = []; for (const k of monthKeys()) for (const [id, x] of Object.entries(month(k).extras)) if (!x.sc && !x.debt && !x.inc && x.name) out.push([k, id, x]); return out; }
 function extrasList(){
-  const L = []; for (const k of monthKeys().slice().reverse()) for (const [id, x] of Object.entries(month(k).extras)) if (!x.debt && x.name) L.push([k, id, x]);
+  const L = []; for (const k of monthKeys().slice().reverse()) for (const [id, x] of Object.entries(month(k).extras)) if (!x.debt && !x.inc && x.name) L.push([k, id, x]);
   if (!L.length) return "";
   return `<div class="smap">${L.slice(0, 40).map(([k, id, x]) => `<label><span>${esc(x.name)} <span class="muted small">${mkShort(k)}</span></span><select class="inp" data-xsc="${k}|${esc(id)}">${scOptions(extraSc(x), true)}</select></label>`).join("")}</div>`;
 }
