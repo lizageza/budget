@@ -403,6 +403,12 @@ table.t td.tx.nm{min-width:160px}
 .hbtn:hover{background:color-mix(in srgb,var(--accent-ink) 26%,transparent)}
 .epcard{border-top:0}
 .card>.epcard summary{border-radius:var(--r)}
+.lgsel{gap:6px}
+.lg{display:inline-flex;align-items:center;gap:0;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:4px 10px;font-size:12.5px;color:var(--ink);cursor:pointer}
+.lg .muted{margin-left:6px;font-family:var(--f-mono);font-size:11.5px}
+.lg[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+.lg[aria-pressed="false"] i{background:transparent!important;border:1.5px solid var(--muted)}
+.lg.reset{color:var(--accent)}
 
 </style>
 </head>
@@ -2464,9 +2470,11 @@ function renderStats(){
   }
   h += `<div class="sgrid"><div class="card"><div class="hd"><h2>Mire megy a pénz</h2><span class="muted small">kattints egy csoportra a részletekhez</span></div><div class="bd">${gEntries.length ? hbars(bars, total, { click: true }) : `<div class="empty">Nincs adat a szűrésre.</div>`}</div>
     ${f.selSc ? scDetail(rows, f.selSc) : ""}</div>`;
-  // havi trend
-  h += `<div class="card"><div class="hd"><h2>Havi trend</h2><span class="muted small">főcsoportonként</span></div><div class="bd"><div class="chart" id="stTrend"></div></div>
-    <div class="legend">${STACK.map((_, i) => `<span><i style="background:${stackColor(i)}"></i>${esc(stackName(i))}</span>`).join("")}</div></div>`;
+  // havi trend / egy időszaknál csoportonkénti oszlopok
+  const tr = trendSeries(spendRows, ms), one = ms.length === 1;
+  h += `<div class="card"><div class="hd"><h2>${one ? "Csoportonként" : "Havi trend"}</h2><span class="muted small">${f.g ? esc(taxGroup(f.g).name) + " alkategóriái" : "főcsoportonként"} · ${fmt(tr.visTotal)}${tr.hidden ? " (szűrve)" : ""}</span></div><div class="bd"><div class="chart" id="stTrend"></div></div>
+    <div class="legend lgsel">${tr.series.map(s => `<button class="lg" data-stk="${esc(String(s.id))}" aria-pressed="${!tr.isHidden(s.id)}" title="Megjelenítés / elrejtés"><i style="background:${s.color}"></i>${esc(s.name)}${one ? "" : ` <span class="muted">${fmt(tr.tot[s.id] || 0, { noUnit: true })}</span>`}</button>`).join("")}
+      ${tr.hidden ? `<button class="lg reset" data-stkall>Mind</button>` : ""}</div></div>`;
   // nasi és alkohol
   h += `<div class="card"><div class="hd"><h2>Nasi és alkohol havonta</h2><span class="muted small">${nM > 1 ? "átlag " + fmt(junk / nM) + "/hó" : ""}</span></div><div class="bd"><div class="chart" id="stJunk"></div></div>
     <div class="legend"><span><i style="background:${cssVar("--s2")}"></i>Nasi és üdítő</span><span><i style="background:${cssVar("--s7")}"></i>Alkohol</span></div>
@@ -2506,11 +2514,48 @@ function renderStats(){
     </div></div></div>`;
   v.innerHTML = h;
   // diagramok
-  const cols = ms.map(k => { const vals = {}; for (const r of spendRows) if (r.k === k) { const i = stackOf(groupOf(r.sc)); vals[i] = (vals[i] || 0) + r.amt; } return { label: mkShort(k), full: mkName(k), cur: k === cur, values: vals }; });
-  const series = STACK.map((_, i) => ({ id: i, name: stackName(i), color: stackColor(i) }));
-  if (ms.length) stackedBars($("#stTrend"), cols, series, { id: "st", label: "Havi költés főcsoportonként" });
+  const vis = tr.series.filter(s => !tr.isHidden(s.id));
+  if (one) catBars($("#stTrend"), vis.map(s => ({ label: s.short, full: s.name, v: tr.tot[s.id] || 0, color: s.color })), tr.visTotal);
+  else if (ms.length) stackedBars($("#stTrend"), ms.map(k => ({ label: mkShort(k), full: mkName(k), cur: k === cur, values: tr.byK[k] || {} })), vis, { id: "st", label: "Havi költés csoportonként" });
   const jc = ms.map(k => { const vals = { n: 0, a: 0 }; for (const r of junkRows) if (r.k === k) vals[r.sc === "etk.alk" ? "a" : "n"] += r.amt; return { label: mkShort(k), full: mkName(k), cur: k === cur, values: vals }; });
   if (ms.length) stackedBars($("#stJunk"), jc, [{ id: "n", name: "Nasi és üdítő", color: cssVar("--s2") }, { id: "a", name: "Alkohol", color: cssVar("--s7") }], { id: "sj", label: "Nasi és alkohol havonta" });
+}
+const SHORT = ["Lakás, rezsi","Kommunikáció","Étkezés","Háztartás","Közlekedés","Gyerekek","Egészség","Hobbi","Egyéb"];
+/* a trend sorozatai: főcsoportok (8 szín + szürke), vagy kiválasztott csoportnál annak alkategóriái */
+function trendSeries(rows, ms){
+  const f = S.sf, key = f.g ? "g:" + f.g : "all", hide = (f.hide = f.hide || {})[key] || {};
+  let series, idOf;
+  if (f.g) { const g = taxGroup(f.g); series = g.subs.map(([s, n], i) => ({ id: g.id + "." + s, name: n, short: n.split(",")[0], color: cssVar(SERIES[i % SERIES.length]) })); idOf = r => r.sc; }
+  else { series = STACK.map((_, i) => ({ id: i, name: stackName(i), short: SHORT[i], color: stackColor(i) })); idOf = r => stackOf(groupOf(r.sc)); }
+  const byK = {}, tot = {};
+  for (const r of rows) { const id = idOf(r); (byK[r.k] = byK[r.k] || {})[id] = (byK[r.k][id] || 0) + r.amt; tot[id] = (tot[id] || 0) + r.amt; }
+  series = series.filter(s => tot[s.id]);                       // üres sorozat nem kell
+  const isHidden = id => !!hide[id];
+  const visTotal = series.filter(s => !isHidden(s.id)).reduce((x, s) => x + tot[s.id], 0);
+  return { series, byK, tot, isHidden, visTotal, hidden: series.some(s => isHidden(s.id)), key };
+}
+/* egy időszak: csoportonként egy oszlop, a csoport színével, értékkel a tetején */
+function catBars(el, items, total){
+  if (!items.length) { el.innerHTML = `<p class="muted small" style="margin:0">Nincs adat.</p>`; return; }
+  const W = 720, H = 260, ml = 44, mr = 6, mt = 22, mb = 34, iw = W - ml - mr, ih = H - mt - mb;
+  const max = Math.max(1, ...items.map(i => i.v)), step = niceStep(max), top = Math.ceil(max / step) * step;
+  const bw = iw / items.length, bar = Math.min(54, bw * 0.62), y = v => mt + ih - v / top * ih;
+  let g = ""; for (let v = 0; v <= top + 1; v += step) g += `<line class="gl" x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ml - 6}" y="${y(v) + 4}" text-anchor="end">${v ? kFmt(v) : "0"}</text>`;
+  let b = "";
+  items.forEach((it, i) => {
+    const x = ml + i * bw + (bw - bar) / 2, h = Math.max(ih - (y(it.v) - mt), it.v > 0 ? 2 : 0);
+    b += `<path d="M${x} ${mt + ih}V${mt + ih - h + 4}q0-4 4-4h${bar - 8}q4 0 4 4V${mt + ih}z" fill="${it.color}"/>`;
+    b += `<text class="ax" x="${x + bar / 2}" y="${mt + ih - h - 6}" text-anchor="middle" style="fill:var(--ink);font-weight:500">${kFmt(it.v)}</text>`;
+    b += `<text class="ax" x="${ml + i * bw + bw / 2}" y="${H - 12}" text-anchor="middle">${esc(it.label)}</text>`;
+    b += `<rect class="hit" data-i="${i}" x="${ml + i * bw}" y="${mt}" width="${bw}" height="${ih}"/>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Költés csoportonként">${g}<line x1="${ml}" x2="${W - mr}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>${b}</svg><div class="tip"></div>`;
+  const tip = el.querySelector(".tip"), svg = el.querySelector("svg");
+  svg.addEventListener("pointermove", e => { const h = e.target.closest(".hit"); if (!h) return tip.classList.remove("on"); const it = items[+h.dataset.i];
+    tip.innerHTML = `<div class="h">${esc(it.full)}</div><div class="r"><span><i style="background:${it.color}"></i>Összeg</span><span class="num">${fmt(it.v)}</span></div><div class="r"><span>Arány</span><span class="num">${total ? (it.v / total * 100).toFixed(1) + "%" : "–"}</span></div>`;
+    const box = el.getBoundingClientRect(), hb = h.getBoundingClientRect(); let lx = hb.left - box.left + hb.width / 2 + 12; if (lx + 190 > box.width) lx = hb.left - box.left + hb.width / 2 - 200;
+    tip.style.left = Math.max(0, lx) + "px"; tip.style.top = "8px"; tip.classList.add("on"); });
+  svg.addEventListener("pointerleave", () => tip.classList.remove("on"));
 }
 function topTable(rows, key, n){
   const m = {}; for (const r of rows) { const k = (r[key] || "").trim(); if (!k) continue; const o = m[fold(k)] = m[fold(k)] || { name: k, n: 0, v: 0 }; o.n++; o.v += r.amt; }
@@ -2539,6 +2584,9 @@ $("#view-stats").addEventListener("click", async e => {
   const t = e.target;
   const src = t.closest("[data-sfsrc]"); if (src) { S.sf.src[src.dataset.sfsrc] = !S.sf.src[src.dataset.sfsrc]; return renderStats(); }
   if (t.closest("[data-sfns]")) { S.sf.ns = !S.sf.ns; return renderStats(); }
+  const lg = t.closest("[data-stk]");
+  if (lg) { const key = S.sf.g ? "g:" + S.sf.g : "all", h = (S.sf.hide = S.sf.hide || {})[key] = { ...(S.sf.hide[key] || {}) }, id = lg.dataset.stk; if (h[id]) delete h[id]; else h[id] = true; return renderStats(); }
+  if (t.closest("[data-stkall]")) { const key = S.sf.g ? "g:" + S.sf.g : "all"; if (S.sf.hide) delete S.sf.hide[key]; return renderStats(); }
   const so = t.closest("[data-sfsort]"); if (so) { S.sf.sort = so.dataset.sfsort; return renderStats(); }
   const hb = t.closest("[data-hb]");
   if (hb) { const id = hb.dataset.hb; if (id.startsWith("sc:")) S.sf.selSc = S.sf.selSc === id.slice(3) ? null : id.slice(3); else S.sf.open[id] = !S.sf.open[id]; return renderStats(); }
