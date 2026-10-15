@@ -1146,31 +1146,55 @@ async function gemModels(force){
 }
 function gemErr(status, body){
   let msg = ""; try { msg = JSON.parse(body).error.message; } catch(x) { msg = String(body).slice(0, 160); }
-  const e = new Error(status === 429 ? "Elfogyott a Gemini ingyenes kerete (próbáld később)." : status === 400 && /API key/i.test(msg) ? "Érvénytelen Gemini API-kulcs." : status === 403 ? "A Gemini API-kulcs nem engedélyezett (403)." : "Gemini hiba " + status + ": " + msg);
+  const e = new Error(status === 429 ? "Elfogyott a Gemini ingyenes kerete (próbáld később)." : status === 400 && /API key/i.test(msg) ? "Érvénytelen Gemini API-kulcs." : status === 403 ? "A Gemini API-kulcs nem engedélyezett (403)." : status >= 500 ? `A Gemini szervere most túlterhelt (${status}).` : "Gemini hiba " + status + ": " + msg);
   e.status = status; return e;
 }
-async function gemCall(parts, schema){
+const GEMST = { info: "" };                                   // a felületen látszó állapot (modell, próbálkozás)
+async function gemFetch(m, body, ms){
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
+  try { return await fetch(`${GEM}/models/${m}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": gemKey() }, body: JSON.stringify(body), signal: ac.signal }); }
+  finally { clearTimeout(t); }
+}
+/* gondolkodás minimálisra: gyorsabb és ritkábban fut időtúllépésbe (blokkolvasáshoz nem kell) */
+function thinkCfg(m){ if (/^gemini-3/.test(m)) return { thinkingLevel: "low" }; if (/^gemini-2\.5-flash(?!-lite)/.test(m)) return { thinkingBudget: 0 }; return null; }
+async function gemCall(parts, schema, opt){
+  opt = opt || {};
   if (!gemKey()) { const e = new Error("Nincs megadva Gemini API-kulcs (Beállítások)."); e.nokey = true; throw e; }
   const fixed = (D().settings.gemModel || "").trim();
   const cands = fixed ? [fixed] : await gemModels();
   if (!cands.length) throw new Error("Nem találok használható Gemini Flash modellt ehhez a kulcshoz.");
+  const timeout = opt.timeout || 75e3;
   let last;
   for (const m of cands.slice(0, 4)) {
-    const r = await fetch(`${GEM}/models/${m}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": gemKey() },
-      body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { temperature: 0.1, responseMimeType: "application/json", responseSchema: schema } }) });
-    if (r.ok) {
-      const d = await r.json();
-      const txt = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || "").join("");
-      if (!txt) { last = new Error("A Gemini üres választ adott" + (d.promptFeedback && d.promptFeedback.blockReason ? " (" + d.promptFeedback.blockReason + ")" : "") + "."); continue; }
-      LS.set("gemLast", m);
-      return JSON.parse(txt);
+    let think = thinkCfg(m);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      GEMST.info = `${m}${attempt > 1 ? ", 2. próbálkozás" : ""}`; if (opt.onInfo) opt.onInfo(GEMST.info);
+      const gc = { temperature: 0.1, responseMimeType: "application/json", responseSchema: schema };
+      if (think) gc.thinkingConfig = think;
+      let r;
+      try { r = await gemFetch(m, { contents: [{ role: "user", parts }], generationConfig: gc }, timeout); }
+      catch (x) {
+        // hálózati hiba („Load failed”) vagy időtúllépés: ugyanazzal még egyszer, aztán a következő modell
+        last = new Error(x.name === "AbortError" ? `Időtúllépés (${Math.round(timeout / 1000)} mp) – ${m}` : "Hálózati hiba (" + (x.message || "Load failed") + ") – " + m);
+        if (attempt === 1) { await new Promise(r => setTimeout(r, 1500)); continue; }
+        break;
+      }
+      if (r.ok) {
+        const d = await r.json();
+        const txt = ((((d.candidates || [])[0] || {}).content || {}).parts || []).filter(p => !p.thought).map(p => p.text || "").join("");
+        if (!txt) { last = new Error("A Gemini üres választ adott" + (d.promptFeedback && d.promptFeedback.blockReason ? " (" + d.promptFeedback.blockReason + ")" : "") + "."); break; }
+        LS.set("gemLast", m);
+        try { return JSON.parse(txt); } catch (x) { last = new Error("A Gemini válasza nem értelmezhető."); break; }
+      }
+      const body = await r.text();
+      last = gemErr(r.status, body);
+      if (r.status === 400 && think && /think/i.test(body)) { think = null; attempt--; continue; }   // ez a modell nem ismeri a beállítást
+      if (r.status === 429) { if (fixed) throw last; break; }                                        // más modellnek lehet külön kerete
+      if (r.status === 403 || (r.status === 400 && /API key/i.test(last.message))) throw last;
+      if (r.status === 404) { LS.set("gemModels", null); break; }
+      if (r.status >= 500 && attempt === 1) { await new Promise(r => setTimeout(r, 2500)); continue; } // 503: túlterhelt, rövid várakozás után újra
+      break;
     }
-    last = gemErr(r.status, await r.text());
-    if (r.status === 429 || r.status === 403 || (r.status === 400 && /API key/i.test(last.message))) {
-      if (r.status === 429 && !fixed) continue;   // más modellnek lehet külön kerete
-      throw last;
-    }
-    if (r.status === 404) LS.set("gemModels", null);
   }
   throw last || new Error("Gemini hiba.");
 }
@@ -1184,7 +1208,7 @@ function receiptSchema(){
     items: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, amount: { type: "NUMBER" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["name","amount","cat"] } }
   }, required: ["shop","currency","total","items"] };
 }
-async function gemReceipt(files){
+async function gemReceipt(files, onInfo){
   const prompt = `You read Hungarian shop receipts, invoices and online order confirmations. The ${files.length} attached file(s) belong to ONE purchase. If several photos are given they are consecutive parts of one long receipt and may overlap: include every product line exactly once.
 Return every purchased product line with its final line amount (quantity × unit price, after any line discount). Put discounts/coupons (KEDVEZMÉNY, kupon, akció) as separate lines with a NEGATIVE amount, or subtract them from the line they belong to. Ignore VAT summaries (ÁFA), payment method lines, card data, change (visszajáró), NAV/AP codes and loyalty points.
 Keep product names readable (expand obvious abbreviations, keep brand names, Hungarian language). shop = store or webshop name. date = purchase date as YYYY-MM-DD; today is ${today()} and the purchase is almost always within the last few weeks, so read the year carefully (Hungarian receipts print e.g. 2026.10.10. or 26.10.10). total = final amount paid.
@@ -1192,7 +1216,7 @@ Categories (use the code):
 ${CAT_HELP()}
 ${CAT_RULES}`;
   const parts = [{ text: prompt }, ...files.map(f => ({ inline_data: { mime_type: f.mime, data: f.b64 } }))];
-  return gemCall(parts, receiptSchema());
+  return gemCall(parts, receiptSchema(), { onInfo, timeout: 90e3 });
 }
 async function gemQuick(text){
   const schema = { type: "OBJECT", properties: { amount: { type: "NUMBER" }, currency: { type: "STRING", enum: CURS }, name: { type: "STRING" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["amount","currency","name","cat"] };
@@ -1232,12 +1256,16 @@ async function prepFile(file){
     return { kind: "pdf", mime: "application/pdf", blob: file, b64: await blobToB64(file), name: file.name, ext: "pdf" };
   }
   const bmp = await loadBitmap(file);
-  const w = bmp.width, h = bmp.height, long = Math.max(w, h), ratio = long / Math.min(w, h);
-  const maxLong = ratio > 2.2 ? 3000 : 2000;                // hosszú blokknál nagyobb felbontás kell
-  const sc = Math.min(1, maxLong / long);
+  const w = bmp.width, h = bmp.height, long = Math.max(w, h), short = Math.min(w, h);
+  // a blokk szövegéhez kb. 1100 px szélesség bőven elég; a hosszú blokk hosszabb oldala legfeljebb 2600 px
+  const sc = Math.min(1, 1100 / short, 2600 / long);
   const cv = document.createElement("canvas"); cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
-  const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
-  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.82));
+  const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+  try { cx.filter = "grayscale(1) contrast(1.15)"; } catch (x) {}
+  cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+  if (bmp.close) bmp.close(); else if (bmp.src) URL.revokeObjectURL(bmp.src);
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.75));
+  cv.width = cv.height = 1;                                   // a vászon memóriáját felszabadítjuk (iPhone)
   return { kind: "img", mime: "image/jpeg", blob, b64: await blobToB64(blob), url: URL.createObjectURL(blob), name: file.name, ext: "jpg" };
 }
 function pickFiles(inputId){
@@ -1302,7 +1330,7 @@ function openReceipt(){
   const dyn = () => `
     ${RC.files.length ? `<div class="thumbs">${RC.files.map((f, i) => `<div class="th">${f.kind === "img" ? `<img src="${f.url}" alt="${i + 1}. rész">` : `<div class="pdf">PDF<span>${esc(f.name.slice(0, 18))}</span></div>`}<span class="n">${i + 1}</span><button class="icon-btn" data-dr="rmf:${i}" aria-label="${i + 1}. rész törlése">${ICON.close}</button></div>`).join("")}</div>` : `<div class="empty small">Még nincs kép.</div>`}
     ${RC.files.length && RC.files.every(f => f.kind === "img") ? `<button class="btn" data-dr="cam">${ICON.plus} Következő rész fotózása</button>` : ""}
-    <div class="actions">${RC.busy ? `<span class="muted"><span class="spin"></span> Feldolgozás… (10–30 mp)</span>` : `<button class="btn primary" data-dr="go" ${RC.files.length ? "" : "disabled"}>${ICON.check} Feldolgozás${gemKey() ? "" : " (nincs kulcs)"}</button><button class="btn ghost" data-dr="manual">Kézi kitöltés</button>`}</div>
+    <div class="actions">${RC.busy ? `<span class="muted"><span class="spin"></span> Feldolgozás… <span id="rcT">0</span> mp<br><span class="small" id="rcI">${esc(GEMST.info)}</span><br><span class="small">Ne zárd le a képernyőt, és maradj az oldalon.</span></span>` : `<button class="btn primary" data-dr="go" ${RC.files.length ? "" : "disabled"}>${ICON.check} Feldolgozás${gemKey() ? "" : " (nincs kulcs)"}</button><button class="btn ghost" data-dr="manual">Kézi kitöltés</button>`}</div>
     ${gemKey() ? "" : `<p class="muted small" style="margin:0">A felismeréshez add meg a Gemini API-kulcsot a Beállításokban. Kulcs nélkül kézzel töltheted ki, a képek így is mentődnek.</p>`}`;
   openDrawer(() => "Blokk beolvasása", body, dyn);
   const add = async list => {
@@ -1318,15 +1346,17 @@ function openReceipt(){
     if (what === "manual") return openSpendEdit(null, { files: RC.files, d: today(), lines: [{ n: "", a: null, sc: "etk.elel" }] });
     if (what === "go") {
       RC.busy = true; DR.refresh();
+      const t0 = Date.now(), tick = setInterval(() => { const el = $("#rcT"); if (el) el.textContent = Math.round((Date.now() - t0) / 1000); }, 1000);
       try {
-        const r = await gemReceipt(RC.files);
+        const r = await gemReceipt(RC.files, info => { const el = $("#rcI"); if (el) el.textContent = info; });
+        clearInterval(tick);
         const lines = (r.items || []).filter(x => x && x.name).map(x => ({ n: x.name, a: Math.round((+x.amount || 0) * 100) / 100, sc: SUBS[x.cat] ? (guessScLearned(x.name) || x.cat) : (guessSc(x.name) || "egyeb.egyeb") }));
         // a dátum csak akkor fogadható el, ha az elmúlt 60 napban van; különben a mai nap, és figyelmeztetés
         const lim = new Date(); lim.setDate(lim.getDate() - 60);
         const okD = /^\d{4}-\d\d-\d\d$/.test(r.date || "") && r.date <= today() && r.date >= dstr(lim);
         const d = okD ? r.date : today(), dateWarn = !okD && r.date ? r.date : null;
         openSpendEdit(null, { files: RC.files, d, shop: r.shop || "", cur: CURS.includes(r.currency) ? r.currency : "HUF", total: +r.total || null, lines: lines.length ? lines : [{ n: "", a: null, sc: "etk.elel" }], src: "receipt", dateWarn });
-      } catch (x) { RC.busy = false; if (DR.open) DR.refresh(); toast(x.message); console.warn(x); }
+      } catch (x) { clearInterval(tick); RC.busy = false; if (DR.open) DR.refresh(); toast(x.message + " – próbáld újra, vagy töltsd ki kézzel."); console.warn(x); }
     }
   };
 }
