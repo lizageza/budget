@@ -418,6 +418,7 @@ table.t .caret{display:inline-block;width:14px;color:var(--muted)}
 table.t tr.sub.cath td{color:var(--ink);font-weight:500}
 table.t tr.sub.deep td.nm{padding-left:46px}
 .kpi.clk{cursor:pointer}.kpi.clk:hover{background:var(--surface-2)}
+.spl .nm .sub.one{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 </style>
 </head>
@@ -1515,7 +1516,9 @@ function spendCard(k){
   return `<div class="card"><div class="hd"><h2>Költések</h2><span class="muted small">${L.length} db · ${fmt(tot)}${junk ? ` · nasi és ital ${fmt(junk)}` : ""}</span></div>
     <div class="bd spendbtns"><button class="btn primary" data-act="receipt">${ICON.camera} Blokk</button><button class="btn" data-act="quick">${ICON.plus} Gyors bevitel</button></div>
     ${L.length ? `<ul class="due spl">${L.slice(0, 6).map(s => { const top = (s.lines || []).slice().sort((a, b) => (b.a || 0) - (a.a || 0))[0] || {};
-      return `<li data-spend="${esc(s.id)}"><span class="day">${(s.d || "").slice(5).replace("-", ".")}.</span><span class="nm">${esc(s.shop || top.n || "Költés")}<span class="sub"><span class="chip">${esc(payName(s.pay))}</span> ${(() => { const L = s.lines || [], cs = {}; for (const l of L) cs[l.sc] = (cs[l.sc] || 0) + (+l.a || 0); const names = Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([sc]) => SUBS[sc] ? SUBS[sc].name : "").filter(Boolean); return (L.length > 1 ? L.length + " tétel · " : "") + esc(names.join(", ")); })()}${s.files && s.files.length ? " · fotó" : ""}</span></span><span class="amt num">${fmt(spendHuf(s))}</span></li>`; }).join("")}</ul>
+      return `<li data-spend="${esc(s.id)}"><span class="day">${(s.d || "").slice(5).replace("-", ".")}.</span><span class="nm">${esc(s.shop || top.n || "Költés")}${(() => { const L = s.lines || [], cs = {}; for (const l of L) cs[l.sc] = (cs[l.sc] || 0) + (+l.a || 0); const names = Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([sc]) => SUBS[sc] ? SUBS[sc].name : "").filter(Boolean);
+        const txt = (L.length > 1 ? L.length + " tétel · " : "") + names.join(", ") + (s.files && s.files.length ? " · fotó" : "");
+        return `<span class="sub one" title="${esc(payName(s.pay) + " · " + txt)}"><span class="chip">${esc(payName(s.pay))}</span> ${esc(txt)}</span>`; })()}</span><span class="amt num">${fmt(spendHuf(s))}</span></li>`; }).join("")}</ul>
       ${L.length > 6 ? `<div class="bd" style="padding-top:0"><button class="btn sm ghost" data-act="gostats">Mind a(z) ${L.length} a Statisztika fülön</button></div>` : ""}` : ""}</div>`;
 }
 
