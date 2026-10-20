@@ -490,6 +490,13 @@ const mkOf = (y, m) => { while (m > 12) { m -= 12; y++; } while (m < 1) { m += 1
 const mkAdd = (k, n) => { const { y, m } = mkParse(k); return mkOf(y, m + n); };
 const mkName = k => { const { y, m } = mkParse(k); return `${cap(HU_MONTHS[m-1])} ${y}`; };
 const mkShort = k => { const { y, m } = mkParse(k); return `${cap(HU_MONTHS[m-1]).slice(0,3)} ${String(y).slice(2)}`; };
+/* a partner neve (beállítható); a belső azonosítók (rekaPct, who: "reka") változatlanok */
+function partner(){ const n = S.data && S.data.settings && S.data.settings.partnerName; return String(n || "").trim() || "Partner"; }
+/* magyar toldalék tetszőleges névhez: hangrend az utolsó nem semleges magánhangzó szerint, a végső a/e megnyúlik */
+function huStem(w){ return w.replace(/a$/, "á").replace(/e$/, "é").replace(/A$/, "Á").replace(/E$/, "É"); }
+function huBack(w){ for (const ch of w.toLowerCase().split("").reverse()) { if ("aáoóuú".includes(ch)) return true; if ("eöőüű".includes(ch)) return false; } return false; }
+const pNak = () => { const n = partner(); return huStem(n) + (huBack(n) ? "nak" : "nek"); };   // Partnernek
+const pE = () => huStem(partner()) + "é";                                                    // Partneré
 function startDay(){ return (S.data && S.data.settings && S.data.settings.startDay) || 10; }
 const dstr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const dparse = s => { const [y, m, d] = String(s).split("-").map(Number); return new Date(y, m - 1, d); };
@@ -647,7 +654,7 @@ function mergeData(A, B){
   return out;
 }
 function normalize(d){
-  d.settings = { rekaPct: 52, rekaRound: 5000, rekaMode: "ceil", startDay: 10, folder: "Budget", ...(d.settings || {}) };
+  d.settings = { rekaPct: 52, rekaRound: 5000, rekaMode: "ceil", startDay: 10, folder: "Budget", partnerName: "Partner", ...(d.settings || {}) };
   d.cats = d.cats || []; d.items = d.items || []; d.months = d.months || {}; d.deleted = d.deleted || {};
   d.assets = d.assets || {}; d.spend = d.spend || {}; d.learn = d.learn || {}; d.statmap = d.statmap || {}; d.periods = d.periods || {};
   for (const g of ["accounts","stocks","crypto","debts","snaps"]) d.assets[g] = d.assets[g] || {};
@@ -741,7 +748,7 @@ const graphAvailable = () => location.protocol === "https:" || location.hostname
 function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Nem tölthető be: " + src)); document.head.appendChild(s); }); }
 async function msalInit(){
   if (MS.pca) return MS.pca;
-  if (!window.msal) { try { await loadScript("msal-browser.min.js"); } catch(x) { await loadScript("https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.30.0/lib/msal-browser.min.js"); } }
+  if (!window.msal) await loadScript("https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.30.0/lib/msal-browser.min.js");
   const pca = new msal.PublicClientApplication({
     auth: { clientId: clientId(), authority: "https://login.microsoftonline.com/consumers", redirectUri: redirectUri() },
     cache: { cacheLocation: "localStorage" }
@@ -996,9 +1003,11 @@ const TAX = [
   { id: "bank",   name: "Banki díjak", c: "--s9", subs: [["utal","Utalási, számlavezetési díj"],["kartya","Kártyadíj, kamat"]] },
   { id: "megt",   name: "Megtakarítás", ns: true, subs: [["megt","Megtakarítás"],["ep","Egészségpénztár-befizetés"]] },
   { id: "hitel",  name: "Hitelkártya-törlesztés", ns: true, subs: [["kartya","Hitelkártya-törlesztés"]] },
-  { id: "reka",   name: "Rékának utalás", ns: true, subs: [["reka","Rékának utalás"]] }
+  { id: "reka",   name: "Utalás a partnernek", ns: true, subs: [["reka","Utalás a partnernek"]] }
 ];
 const SUBS = {}; for (const g of TAX) for (const [s, n] of g.subs) SUBS[g.id + "." + s] = { id: g.id + "." + s, g: g.id, name: n, gname: g.name, ns: !!g.ns };
+/* a partner nevét a felirat a beállításból kapja (renderAll hívja) */
+function applyPartnerNames(){ const t = pNak() + " utalás", g = taxGroup("reka"); g.name = t; g.subs[0][1] = t; SUBS["reka.reka"].name = t; SUBS["reka.reka"].gname = t; }
 const groupOf = sc => (SUBS[sc] || SUBS["egyeb.egyeb"]).g;
 const taxGroup = id => TAX.find(g => g.id === id);
 /* a halmozott diagram színei: 8 fix szín; a lakáshitel a rezsivel közös sávban, a kisebb csoportok (Ruha, Vállalkozói, Egyéb) közös szürkében */
@@ -1301,7 +1310,7 @@ function openQuick(){
     <div class="field"><label for="qSc">Kategória</label><select class="inp" id="qSc">${scOptions("egyeb.egyeb")}</select></div>
     <div class="field"><label>Fizetés</label><div class="seg wrap" id="qPay">${PAY().map(([k, n]) => `<button data-dr="pay:${k}" aria-pressed="${st.pay === k}">${esc(n)}</button>`).join("")}</div></div>
     <div class="two"><div class="field"><label for="qD">Dátum</label><input class="inp" id="qD" type="date" value="${st.d}"></div>
-      <div class="field"><label for="qW">Kié</label><select class="inp" id="qW"><option value="geza">Enyém</option><option value="reka">Rékáé</option></select></div></div>
+      <div class="field"><label for="qW">Kié</label><select class="inp" id="qW"><option value="geza">Enyém</option><option value="reka">${esc(pE())}</option></select></div></div>
     <div class="actions"><button class="btn primary" data-dr="save">${ICON.check} Mentés</button></div>`, preview);
   let tm = null;
   const upd = () => {
@@ -1452,7 +1461,7 @@ function openSpendEdit(id, init){
       <div class="field"><label for="eD">Dátum</label><input class="inp" id="eD" type="date" value="${esc(st.d || today())}">${st.dateWarn ? `<span class="warnline" style="margin:0">${ICON.warn} A blokkon talált dátum (${esc(st.dateWarn)}) nem tűnik valósnak, a mai napot írtam be. Ellenőrizd!</span>` : ""}</div></div>
     <div class="field"><label>Fizetés</label><div class="seg wrap" id="ePay">${PAY().map(([k, n]) => `<button data-dr="pay:${k}" aria-pressed="${st.pay === k}">${esc(n)}</button>`).join("")}</div></div>
     <div class="two"><div class="field"><label for="eCur">Pénznem</label><select class="inp" id="eCur">${CURS.map(c => `<option ${c === st.cur ? "selected" : ""}>${c}</option>`).join("")}</select></div>
-      <div class="field"><label for="eW">Kié</label><select class="inp" id="eW"><option value="geza" ${st.who !== "reka" ? "selected" : ""}>Enyém</option><option value="reka" ${st.who === "reka" ? "selected" : ""}>Rékáé</option></select></div></div>
+      <div class="field"><label for="eW">Kié</label><select class="inp" id="eW"><option value="geza" ${st.who !== "reka" ? "selected" : ""}>Enyém</option><option value="reka" ${st.who === "reka" ? "selected" : ""}>${esc(pE())}</option></select></div></div>
     <div><div class="rline hd"><span>Tétel</span><span>Összeg</span><span>Kategória</span><span></span></div><div id="eRows">${rows()}</div>
       <button class="btn sm" data-dr="addl" style="margin-top:6px">${ICON.plus} Sor</button></div>
     ${src && src.files && src.files.length ? `<div class="actions" style="justify-content:flex-start">${src.files.map((f, i) => `<button class="btn sm" data-dr="view:${i}">${f.endsWith(".pdf") ? "PDF" : "Fotó"} ${i + 1}</button>`).join("")}</div>` : ""}
@@ -1583,6 +1592,7 @@ function setTab(t){
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if (b) setTab(b.dataset.tab); });
 function renderAll(){
   if (!S.data) return;
+  applyPartnerNames();
   storeLabel();
   const f = { month: renderMonth, year: renderYear, stats: renderStats, assets: renderAssets, items: renderItems, settings: renderSettings }[S.tab];
   if (f) f();
@@ -1612,7 +1622,7 @@ function debtCard(){
         <span class="amt num">${fmt(f.rem)}${pd.rows.length ? `<span class="pend" title="Az utolsó egyenleg-megadás óta rögzítve">${pd.sum >= 0 ? "+" : "−"}${fmt(Math.abs(pd.sum), { noUnit: true })}</span>` : ""}</span>
         <button class="ok" data-act="debtadd" data-id="${esc(d.id)}" title="Költés, díj vagy eseti törlesztés" aria-label="${esc(d.name)}: új tétel">${ICON.plus}</button></summary>
       <div class="dbody">
-        <div class="dgrid"><div><div class="k">Keret</div><input class="inp num" inputmode="numeric" data-f="debt|${esc(d.id)}|limit" value="${d.limit ?? ""}" placeholder="pl. 700000" aria-label="${esc(d.name)} keret"></div>
+        <div class="dgrid"><div><div class="k">Keret</div><input class="inp num" inputmode="numeric" data-f="debt|${esc(d.id)}|limit" value="${d.limit ?? ""}" placeholder="pl. 500000" aria-label="${esc(d.name)} keret"></div>
           <div><div class="k">Tartozás</div><div class="num v">${fmt(f.rem)}</div></div>
           <div><div class="k">Elérhető</div><div class="num v">${lim ? fmt(Math.max(lim - f.rem, 0)) : "–"}</div></div></div>
         ${pd.rows.length ? `<div class="pendbox"><div class="k">Az egyenleg megadása óta${d.baseAt ? " (" + new Date(d.baseAt).toLocaleDateString("hu-HU", { month: "short", day: "numeric" }) + ")" : ""}: ${pd.sum >= 0 ? "+" : "−"}${fmt(Math.abs(pd.sum))}</div>
@@ -1712,8 +1722,8 @@ function renderMonth(){
       <div class="kpi"><div class="k">Bevétel (beérkezett)</div><div class="v">${fmt(c.inc.a)}</div><div class="s">terv ${fmt(c.inc.p)}${c.inc.a < c.inc.p ? " · még " + fmt(c.inc.p - c.inc.a) : ""}</div></div>
       <div class="kpi"><div class="k">Kiadás (várható)</div><div class="v">${fmt(c.exp.a)}</div><div class="s">terv ${fmt(c.exp.p)} · <span class="${c.exp.a > c.exp.p ? "neg" : "pos"}">${fmt(c.exp.a - c.exp.p, { sign: true })}</span></div></div>
       ${c.rekaPaid == null
-        ? `<div class="kpi"><div class="k">Rékának utalandó (${D().settings.rekaPct}%)</div><div class="v">${fmt(c.reka)}</div><div class="s rk"><span>neked marad: ${fmt(c.bal.p - c.reka)}</span><button class="btn sm" data-act="reka">Utalva</button></div></div>`
-        : `<div class="kpi"><div class="k">Réka</div><div class="v muted" style="font-size:15px;font-weight:500">${ICON.check.replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px;color:var(--good)"')} ${fmt(c.rekaPaid)} utalva</div><div class="s rk"><span>${mo.meta.rekaAt ? new Date(mo.meta.rekaAt).toLocaleDateString("hu-HU", { month: "short", day: "numeric" }) : ""}</span><button class="btn sm ghost" data-act="reka">Módosít</button></div></div>`}
+        ? `<div class="kpi"><div class="k">${esc(pNak())} utalandó (${D().settings.rekaPct}%)</div><div class="v">${fmt(c.reka)}</div><div class="s rk"><span>neked marad: ${fmt(c.bal.p - c.reka)}</span><button class="btn sm" data-act="reka">Utalva</button></div></div>`
+        : `<div class="kpi"><div class="k">${esc(partner())}</div><div class="v muted" style="font-size:15px;font-weight:500">${ICON.check.replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px;color:var(--good)"')} ${fmt(c.rekaPaid)} utalva</div><div class="s rk"><span>${mo.meta.rekaAt ? new Date(mo.meta.rekaAt).toLocaleDateString("hu-HU", { month: "short", day: "numeric" }) : ""}</span><button class="btn sm ghost" data-act="reka">Módosít</button></div></div>`}
       ${(() => { const t = assetTotals(); return `<div class="kpi"><div class="k">Teljes vagyon</div><div class="v">${fmt(t.total)}</div><div class="s">Revolut ${fmt(t.revHuf, { noUnit: true })} + megtakarítás ${fmt(t.total - t.revHuf, { noUnit: true })}</div></div>`; })()}
     </div>`;
   h += spendCard(k);
@@ -1921,7 +1931,7 @@ function openExtraNew(k){
   setTimeout(() => { const n = $("#dName"); if (n) n.focus(); }, 80);
 }
 function openReka(k){
-  openDrawer(() => "Utalás Rékának", () => { const c = calc(k), mo = month(k); return `
+  openDrawer(() => "Utalás: " + esc(partner()), () => { const c = calc(k), mo = month(k); return `
     <div class="muted small">${mkName(k)} · a tervezett havi egyenleg (${fmt(c.bal.p)}) ${D().settings.rekaPct}%-a, ${D().settings.rekaMode === "round" ? "a legközelebbi" : "felfelé kerekítve a következő"} ${fmt(D().settings.rekaRound)}-re.</div>
     <div class="kpi" style="padding:0"><div class="k">Számított összeg</div><div class="v">${fmt(c.reka)}</div></div>
     <div class="field"><label for="dRk">Ténylegesen utalt összeg</label><input class="inp num" id="dRk" data-fk="paid" inputmode="numeric" value="${mo.meta.rekaPaid ?? ""}" placeholder="${c.reka}" autocomplete="off" autofocus></div>
@@ -2126,7 +2136,7 @@ function renderYear(){
   const series = ecats.map((c, i) => ({ id: c.id, name: c.name, color: cssVar(SERIES[i % SERIES.length]) }));
   h += `<div class="grid"><div class="card"><div class="hd"><h2>Kiadások kategóriánként</h2><span class="muted small">${mode === "p" ? "terv" : "tény, a nyitott tételeknél a terv"}</span></div><div class="bd"><div class="chart" id="yChart"></div></div>
     <div class="legend">${series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div></div>`;
-  h += `<div class="card"><div class="hd"><h2>Havi összesítő</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Hónap</th><th>Bevétel</th><th>Kiadás</th><th>Egyenleg</th><th>Réka</th><th>Keret</th></tr></thead><tbody>`;
+  h += `<div class="card"><div class="hd"><h2>Havi összesítő</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Hónap</th><th>Bevétel</th><th>Kiadás</th><th>Egyenleg</th><th>${esc(partner())}</th><th>Keret</th></tr></thead><tbody>`;
   for (const { k, c } of rows) {
     tot.inc += val(c.inc); tot.exp += val(c.exp); tot.bal += val(c.bal); tot.reka += mode === "p" ? c.reka : (c.rekaPaid ?? c.reka);
     h += `<tr class="${k === cur ? "cur" : ""}"><td><a href="#" data-act="gomonth" data-k="${k}">${mkName(k)}</a>${month(k).meta.closed ? ' <span class="chip">lezárva</span>' : ""}</td>
@@ -2307,7 +2317,8 @@ function renderSettings(){
     <div class="field"><label for="sFolder">OneDrive-mappa</label><input class="inp" id="sFolder" data-f="set|folder" value="${esc(st.folder || "Budget")}" autocomplete="off"><span class="muted small">A OneDrive gyökeréhez képest, pl. <code>Dokumentumok/Budget</code>. Ha a gépen ugyanezt a mappát nyitod meg helyi módban, ugyanazt a fájlt látod.</span></div>
   </div></div>
   <div class="card"><div class="hd"><h2>Számítás</h2></div><div class="bd">
-    <div class="two"><div class="field"><label for="sPct">Réka része (%)</label><input class="inp num" id="sPct" data-f="set|rekaPct" value="${st.rekaPct}" inputmode="decimal"></div>
+    <div class="field"><label for="sPn">Partner neve</label><input class="inp" id="sPn" data-f="set|partnerName" value="${esc(partner())}" autocomplete="off" placeholder="Partner"><span class="muted small">A felületen mindenhol ez a név jelenik meg. A ${FILE} fájlba mentődik.</span></div>
+    <div class="two"><div class="field"><label for="sPct">${esc(partner())} része (%)</label><input class="inp num" id="sPct" data-f="set|rekaPct" value="${st.rekaPct}" inputmode="decimal"></div>
     <div class="field"><label for="sRnd">Kerekítés (Ft)</label><input class="inp num" id="sRnd" data-f="set|rekaRound" value="${st.rekaRound}" inputmode="numeric"></div></div>
     <div class="field"><label for="sMode">Kerekítés módja</label><select class="inp" id="sMode" data-f="set|rekaMode"><option value="ceil" ${st.rekaMode !== "round" ? "selected" : ""}>felfelé (a következő egészre)</option><option value="round" ${st.rekaMode === "round" ? "selected" : ""}>a legközelebbire (mint az Excelben)</option></select></div>
     <div class="field"><label for="sSd">Az időszak kezdőnapja</label><input class="inp num" id="sSd" data-f="set|startDay" value="${st.startDay}" inputmode="numeric"><span class="muted small">A hónap ettől a naptól a következő hónap előző napjáig tart.</span></div>
@@ -2364,7 +2375,7 @@ function showSetup(mode, name){
   const v = $("#view-setup"), fsa = "showDirectoryPicker" in window, gOk = graphAvailable();
   const head = t => `<div class="setup"><div class="card"><h2>${t}</h2>`;
   if (mode === "resume") v.innerHTML = head("Folytatás") + `<p>A böngésző biztonsági okból újra engedélyt kér a mappához.</p><div class="choices"><button class="btn primary" data-su="resume">Folytatás a(z) „${esc(name)}” mappával</button><button class="btn" data-su="start">Másik tárolás választása</button></div></div></div>`;
-  else if (mode === "empty") v.innerHTML = head("Még nincs adat itt: " + esc(name)) + `<p>Mivel induljunk?</p><div class="choices"><button class="btn primary" data-su="seed">A Budget 2026.xlsx adataival (2026. március – 2027. április)</button><button class="btn" data-su="import">Betöltés JSON-mentésből</button></div></div></div>`;
+  else if (mode === "empty") v.innerHTML = head("Még nincs adat itt: " + esc(name)) + `<p>Mivel induljunk?</p><div class="choices"><button class="btn primary" data-su="seed">Üres költségvetés (csak a kategóriák)</button><button class="btn" data-su="import">Betöltés JSON-mentésből</button></div></div></div>`;
   else if (mode === "graph-relogin") v.innerHTML = head("Újra be kell lépni") + `<p>A OneDrive-bejelentkezés lejárt. A nem mentett változások megmaradnak ebben az ablakban, belépés után mentem őket.</p><div class="choices"><button class="btn primary" data-su="login">Belépés Microsoft-fiókkal</button></div></div></div>`;
   else v.innerHTML = head("Hol tároljam az adatokat?") + `<p>Az adat egyetlen fájl (<code>${FILE}</code>), mellette napi biztonsági mentések. A két mód ugyanazt a fájlt használhatja: gépen a OneDrive-mappát helyi mappaként is megnyithatod.</p>
     <div class="choices">
@@ -2437,7 +2448,7 @@ async function boot(){
 boot();
 
 /* ================= statisztika ================= */
-S.sf = S.sf || { per: "6", from: null, to: null, src: { plan: true, geza: true, reka: true }, ns: false, q: "", g: "", open: {}, sort: "d" };
+S.sf = S.sf || { per: "cur", from: null, to: null, src: { plan: true, geza: true, reka: true }, ns: false, q: "", g: "", open: {}, sort: "d" };
 function statMonths(){
   const set = new Set(monthKeys().filter(k => k <= currentMk()));
   for (const s of spends()) set.add(mkOfDate(s.d));
@@ -2488,7 +2499,7 @@ function statRows(){
         const v = paid; if (!v) continue;
         rows.push({ k, d: null, ld, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, kind: l.kind, lid: l.id });
       }
-      if (f.ns) { const c = calc(k), rv = c.rekaPaid ?? (k < cur ? c.reka : 0), ld = (mo.meta.rekaAt || "").slice(0, 10) || dstr(period(k).start); if (rv && inR(ld)) rows.push({ k, d: null, ld, src: "plan", who: "plan", sc: "reka.reka", name: "Rékának utalás", shop: "", pay: "raif", amt: rv }); }
+      if (f.ns) { const c = calc(k), rv = c.rekaPaid ?? (k < cur ? c.reka : 0), ld = (mo.meta.rekaAt || "").slice(0, 10) || dstr(period(k).start); if (rv && inR(ld)) rows.push({ k, d: null, ld, src: "plan", who: "plan", sc: "reka.reka", name: pNak() + " utalás", shop: "", pay: "raif", amt: rv }); }
     }
   }
   for (const s of spends()) {
@@ -2567,7 +2578,7 @@ function renderStats(){
     <select class="inp" data-sf="g" aria-label="Főcsoport"><option value="">Minden csoport</option>${TAX.filter(g => f.ns || !g.ns).map(g => `<option value="${g.id}" ${f.g === g.id ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select>
     ${f.sc ? `<button class="chipbtn" data-scclear aria-pressed="true" title="Szűrés törlése">${esc(SUBS[f.sc].name)} ✕</button>` : ""}
     <input class="inp grow" type="search" data-sf="q" value="${esc(f.q)}" placeholder="Keresés: tétel, bolt (pl. Hell, Lidl)" aria-label="Keresés">
-    <div class="chips">${[["plan","Tervezett tételek"],["geza","Saját költés"],["reka","Réka költése"]].map(([k, n]) => `<button class="chipbtn" data-sfsrc="${k}" aria-pressed="${!!f.src[k]}">${n}</button>`).join("")}
+    <div class="chips">${[["plan","Tervezett tételek"],["geza","Saját költés"],["reka",partner() + " költése"]].map(([k, n]) => `<button class="chipbtn" data-sfsrc="${k}" aria-pressed="${!!f.src[k]}">${esc(n)}</button>`).join("")}
       <button class="chipbtn" data-sfns aria-pressed="${f.ns}">Nem költés is</button></div>
   </div>`;
   h += `<div class="kpis k5">
@@ -2575,7 +2586,7 @@ function renderStats(){
     <div class="kpi clk" data-junk title="A nasi és ital tételek listája"><div class="k">Nasi és ital</div><div class="v">${fmt(junk)}</div><div class="s">${etk ? (junk / etk * 100).toFixed(0) + "% az élelmiszer/étkezésből" : "–"}${nM > 1 ? " · havi " + fmt(junk / nM) : ""}</div></div>
     <div class="kpi"><div class="k">Rögzített költés</div><div class="v">${fmt(own.reduce((s, r) => s + r.amt, 0))}</div><div class="s">${nRec} blokk / bevitel</div></div>
     <div class="kpi"><div class="k">Neked maradt / rögzítve</div><div class="v">${left ? Math.round(ownG / left * 100) + "%" : "–"}</div><div class="s">${fmt(ownG)} / ${fmt(left)}</div></div>
-    <div class="kpi"><div class="k">Rékának utalva / részletezve</div><div class="v">${rekaT ? Math.round(rekaS / rekaT * 100) + "%" : "–"}</div><div class="s">${fmt(rekaS)} / ${fmt(rekaT)}${rekaT > rekaS ? " · nem részletezett " + fmt(rekaT - rekaS) : ""}</div></div>
+    <div class="kpi"><div class="k">${esc(pNak())} utalva / részletezve</div><div class="v">${rekaT ? Math.round(rekaS / rekaT * 100) + "%" : "–"}</div><div class="s">${fmt(rekaS)} / ${fmt(rekaT)}${rekaT > rekaS ? " · nem részletezett " + fmt(rekaT - rekaS) : ""}</div></div>
   </div>`;
   // mire megy
   const byG = sumBy(spendRows.concat(f.ns ? rows.filter(r => (SUBS[r.sc] || {}).ns) : []), r => groupOf(r.sc));
@@ -2631,7 +2642,7 @@ function renderStats(){
   list.sort((x, y) => S.sf.sort === "a" ? y.amt - x.amt : ((y.d || y.ld || "").localeCompare(x.d || x.ld || "")));
   const og = S.sf.openG = S.sf.openG || {};
   const dcell = r => (r.d || r.ld) ? (r.d || r.ld).slice(5).replace("-", ".") + "." : mkShort(r.k);
-  const srcChip = r => `<span class="chip">${r.src === "plan" ? "terv" : r.who === "reka" ? "Réka" : payName(r.pay)}</span>`;
+  const srcChip = r => `<span class="chip">${r.src === "plan" ? "terv" : r.who === "reka" ? esc(partner()) : esc(payName(r.pay))}</span>`;
   h += `<div class="card" id="stList" style="margin-top:16px;scroll-margin-top:70px"><div class="hd"><h2>Tételek${f.sc ? ` <span class="chip">${esc(SUBS[f.sc].name)}</span>` : ""}</h2><span class="muted small">${list.length} sor · ${fmt(list.reduce((s, r) => s + r.amt, 0))}</span><span class="spacer" style="flex:1"></span>
     <div class="seg"><button data-sfsort="d" aria-pressed="${S.sf.sort !== "a"}">Dátum</button><button data-sfsort="a" aria-pressed="${S.sf.sort === "a"}">Összeg</button></div><button class="btn sm" data-act="stcsv">CSV</button></div>
     <div class="bd muted small" style="padding:0 16px 8px">Egy blokk egy sor; rákattintva lenyílik kategóriánként és tételesen, a ceruzával szerkesztheted.</div>
@@ -2653,8 +2664,8 @@ function renderStats(){
     ${items().filter(it => !isIncomeCat(it.cat)).map(it => `<label class="${it.off ? "off" : ""}"><span>${esc(it.name)}</span><select class="inp" data-smap="${esc(it.id)}">${scOptions(itemSc(it), true)}</select></label>`).join("")}</div></div>
     <div class="card"><div class="hd"><h2>Eseti tételek és import</h2></div><div class="bd" style="display:grid;gap:12px">
       <p class="muted small" style="margin:0">${(() => { const n = extrasUnclassified().length; return n ? `${n} eseti tétel még automatikus (kulcsszavas) besorolású.` : "Minden eseti tétel be van sorolva."; })()}</p>
-      <div class="actions" style="justify-content:flex-start"><button class="btn" data-act="aiextras" ${extrasUnclassified().length ? "" : "disabled"}>Eseti tételek besorolása AI-val</button><button class="btn" data-act="rekaimp">Réka exportjának betöltése…</button></div>
-      <p class="muted small" style="margin:0">Réka oldala egy <code>.json</code> fájlt ad. Ugyanazt többször is betöltheted, nem duplázódik.</p>
+      <div class="actions" style="justify-content:flex-start"><button class="btn" data-act="aiextras" ${extrasUnclassified().length ? "" : "disabled"}>Eseti tételek besorolása AI-val</button><button class="btn" data-act="rekaimp">${esc(partner())} exportjának betöltése…</button></div>
+      <p class="muted small" style="margin:0">${esc(partner())} költésrögzítő oldala egy <code>.json</code> fájlt ad. Ugyanazt többször is betöltheted, nem duplázódik.</p>
       ${extrasList()}
     </div></div></div>`;
   v.innerHTML = h;
@@ -2757,10 +2768,10 @@ $("#view-stats").addEventListener("keydown", e => { if (e.key === "Enter" && e.t
 function statCsv(){
   const q = s => `"${String(s ?? "").replace(/"/g, '""')}"`;
   const lines = [["Hónap","Dátum","Tétel","Bolt","Főcsoport","Kategória","Forrás","Fizetés","Összeg (Ft)"].map(q).join(";")];
-  for (const r of statRows()) lines.push([r.k, r.d || "", r.name, r.shop, (SUBS[r.sc] || {}).gname || "", (SUBS[r.sc] || {}).name || "", r.src === "plan" ? "terv" : r.who === "reka" ? "Réka" : "saját", payName(r.pay), Math.round(r.amt)].map(q).join(";"));
+  for (const r of statRows()) lines.push([r.k, r.d || "", r.name, r.shop, (SUBS[r.sc] || {}).gname || "", (SUBS[r.sc] || {}).name || "", r.src === "plan" ? "terv" : r.who === "reka" ? partner() : "saját", payName(r.pay), Math.round(r.amt)].map(q).join(";"));
   download(`budget-statisztika-${today()}.csv`, "﻿" + lines.join("\r\n"), "text/csv");
 }
-/* Réka oldalának exportja: { app: "budget-reka", spend: [ {id, d, shop, pay, cur, lines:[{n,a,sc}], note, at, u} ] } */
+/* a partner költésrögzítő oldalának exportja: { app: "budget-reka", spend: [ {id, d, shop, pay, cur, lines:[{n,a,sc}], note, at, u} ] } */
 async function importReka(){
   const inp = $("#fileIn"); inp.value = "";
   const f = await new Promise(res => { inp.onchange = () => res(inp.files[0]); inp.click(); }); if (!f) return;
@@ -2779,7 +2790,7 @@ async function importReka(){
     rec.rate = rec.cur === "HUF" ? 1 : (+s.rate || fx(rec.cur)); rec.huf = spendHuf(rec);
     D().spend[id] = rec; old ? upd++ : add++;
   }
-  persist(); renderAll(); toast(`Réka költései: ${add} új, ${upd} frissített.`);
+  persist(); renderAll(); toast(`${partner()} költései: ${add} új, ${upd} frissített.`);
 }
 
 </script>
