@@ -992,7 +992,7 @@ const TAX = [
   { id: "komm",   name: "Kommunikáció és előfizetések", c: "--s2", subs: [["tel","Telefon, net"],["dig","Digitális előfizetés"]] },
   { id: "etk",    name: "Élelmiszer / étkezés", c: "--s3", subs: [["nasi","Nasi és ital"],["elel","Élelmiszer"],["ett","Étterem"],["gyors","Gyorsétterem"]] },
   { id: "haz",    name: "Háztartás", c: "--s4", subs: [["drog","Háztartás és drogéria"],["karb","Karbantartás, javítás, barkács"]] },
-  { id: "koz",    name: "Közlekedés", c: "--s5", subs: [["uza","Üzemanyag"],["ado","Autó adó"],["auto","Autó egyéb"]] },
+  { id: "koz",    name: "Autó költségek", c: "--s5", subs: [["uza","Üzemanyag"],["auto","Szerviz, javítás, alkatrész"],["mosas","Autómosás, ápolás"],["park","Parkolás, autópálya"],["bizt","Autó-biztosítás (KGFB, casco)"],["ado","Autó adó"]] },
   { id: "gyer",   name: "Gyerekek", c: "--s6", subs: [["isk","Iskola, iskolai étkezés"],["edz","Edzés, különóra"],["zseb","Zsebpénz"],["berl","Bérlet"],["vas","Gyerek vásárlás"]] },
   { id: "eg",     name: "Egészség és biztosítás", c: "--s7", subs: [["bizt","Biztosítás"],["gyogy","Gyógyszer, patika, orvos"]] },
   { id: "hobbi",  name: "Hobbi és szórakozás", c: "--s8", subs: [["retro","Hobbi, gyűjtés"],["szor","Szórakozás, program"],["tech","Online / tech vásárlás"]] },
@@ -1029,6 +1029,7 @@ function itemScAuto(it){
   if (has(/ viz |csatorna/)) return "rezsi.viz";
   if (has(/hulladek|szemet/)) return "rezsi.hull";
   if (has(/egeszsegpenztar|\bep\b/)) return "megt.ep";
+  if (has(/kgfb|casco|gepjarmu|kotelezo/)) return "koz.bizt";
   if (has(/biztositas/)) return "eg.bizt";
   if (has(/telefon|internet|mobil| net |telekom|telenor|vodafone|yettel|digi /)) return "komm.tel";
   if (has(/fundamenta|lakastakarek|lakashitel|jelzalog|torleszto/)) return "lak.fund";
@@ -1047,13 +1048,16 @@ const KW = [
   ["bank.utal", "utalasi utalasdij utalas dija szamlavezetesi szamlavezetes tranzakcios jutalek bankdij keszpenzfelvetel keszpenzfelveteli"],
   ["bank.kartya", "kartyadij kartyadija kamat kesedelmi"],
   ["etk.gyors", "burger mcdonald mcdonalds kfc subway gyros kebab hotdog langos bufe gyorsetterem popeyes wendys"],
-  ["etk.nasi", "chips chio pringles lays snack ropi popcorn cola kola coca pepsi sprite fanta schweppes kinley mountain dew uditok udito hell monster red bull redbull burn energiaital energy csoki csokolade milka cadbury kinder bounty snickers mars twix balaton boci sport szelet tibi nutella oreo keksz nápolyi napolyi gumicukor haribo cukorka nyalóka nyaloka fagyi fagylalt jegkrem magnum cornetto desszert sutemeny fank croissant tortaszelet drazse mogyoro pisztacia sor sort sorok heineken borsodi dreher soproni arany aszok kobanyai staropramen pilsner bor borok rose tokaji pezsgo palinka whisky whiskey vodka rum gin likor jagermeister unicum vermut cider fröccs"],
+  ["etk.nasi", "chips chio pringles lays snack ropi popcorn cola kola coca pepsi sprite fanta schweppes kinley mountain dew uditok udito cappy limonade hell monster red bull redbull burn energiaital energy csoki csokolade milka cadbury kinder bounty snickers mars twix balaton boci sportszelet tibi nutella oreo keksz nápolyi napolyi gumicukor haribo cukorka nyalóka nyaloka fagyi fagylalt jegkrem magnum cornetto desszert sutemeny fank croissant tortaszelet drazse mogyoro pisztacia sor sort sorok heineken borsodi dreher soproni arany aszok kobanyai staropramen pilsner bor borok rose tokaji pezsgo palinka whisky whiskey vodka rum gin likor jagermeister unicum vermut cider fröccs"],
   ["etk.ett", "etterem pizzeria wolt foodora netpincer sushi kavezo cukraszda menu ebed vacsora kiszallitas starbucks costa bisztro vendeglo csarda"],
-  ["etk.elel", "kenyer kifli zsemle pekaru tej tejfol joghurt sajt vaj tojas hus csirke sertes marha sonka szalami kolbasz virsli felvagott liszt cukor so rizs teszta zoldseg gyumolcs alma banan paradicsom paprika krumpli burgonya hagyma uborka salata olaj ecet kave tea muzli zabpehely konzerv fozelek tesco lidl aldi spar penny auchan cba coop prima interspar"],
+  ["etk.elel", "kenyer kifli zsemle pekaru tej tejfol joghurt sajt vaj tojas hus csirke sertes marha sonka szalami kolbasz virsli felvagott tarja karaj szeletelt csirkemell daralthus liszt cukor so rizs teszta zoldseg gyumolcs alma banan paradicsom paprika krumpli burgonya hagyma uborka salata olaj ecet kave tea muzli zabpehely konzerv fozelek tesco lidl aldi spar penny auchan cba coop prima interspar"],
   ["haz.drog", "dm rossmann muller drogeria mososzer oblito ariel persil lenor jar mosogato wc papir toalettpapir papirzsebkendo szalveta tusfurdo sampon fogkrem fogkefe dezodor borotva pelenka szappan tisztitoszer szivacs zacsko szemeteszsak folia alufolia"],
   ["haz.karb", "obi praktiker bauhaus leroy merlin barkacs csavar festek izzo elem szerszam javitas szerelo vizvezetek villanyszerelo ikea jysk butor"],
   ["koz.uza", "benzin gazolaj diesel tankolas uzemanyag mol omv shell orlen lukoil"],
-  ["koz.auto", "parkolas parkolo autopalya matrica autómosó automoso szerviz gumi olajcsere muszaki kgfb casco"],
+  ["koz.mosas", "automoso automosas autokozmetika autoapolas belsotisztitas"],
+  ["koz.park", "parkolas parkolo parkolojegy autopalya autopalyamatrica matrica utdij"],
+  ["koz.bizt", "kgfb casco"],
+  ["koz.auto", "szerviz gumi gumiabroncs gumicsere olajcsere muszaki vizsga alkatresz autoalkatresz lambda szonda lambdaszonda fekbetet fektarcsa olajszuro levegoszuro pollenszuro gyujtogyertya motorolaj fagyallo ablakmoso ablaktorlo kipufogo akkumulator autoakkumulator vezerles kuplung"],
   ["eg.gyogy", "patika gyogyszertar gyogyszer vitamin orvos fogorvos labor recept kontaktlencse szemuveg optika"],
   ["ruha.ruha", "ruha cipo polo nadrag farmer kabat dzseki pulover zokni alsonemu hm zara reserved deichmann decathlon sportruha"],
   ["hobbi.szor", "mozi cinema city jegy koncert szinhaz muzeum belepo strand furdo jatszohaz bowling tarsasjatek"],
@@ -1219,7 +1223,7 @@ async function gemCall(parts, schema, opt){
 }
 const CAT_HELP = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s, n]) => `${g.id}.${s} = ${g.name} / ${n}`)).join("\n");
 const CAT_ENUM = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s]) => g.id + "." + s));
-const CAT_RULES = `Category rules: chips, crisps, salty snacks, soft drinks (cola, Pepsi, Sprite, Fanta), energy drinks (Hell, Monster, Red Bull), chocolate, candy, ice cream, biscuits/cookies, pastries and desserts, and all alcoholic drinks (beer, wine, spirits, sparkling wine) => etk.nasi. Fast-food chains and snack bars (Burger King, McDonald's, KFC, Subway, gyros, kebab, hot dog, büfé) => etk.gyors; sit-down restaurants, cafés, patisseries and food delivery => etk.ett. Coffee, tea, bread, dairy, meat, vegetables, fruit, mineral water, juice-free basics => etk.elel. Cleaning and personal hygiene products => haz.drog. Bottle deposit (betétdíj, visszaváltási díj, DRS) => the same category as the drink it belongs to (usually etk.nasi). Fuel => koz.uza. Medicine, pharmacy => eg.gyogy. Bank transfer fees, account maintenance fees, cash withdrawal fees => bank.utal; card fees and interest => bank.kartya. Use egyeb.egyeb only if nothing fits.`;
+const CAT_RULES = `Category rules: chips, crisps, salty snacks, soft drinks (cola, Pepsi, Sprite, Fanta), energy drinks (Hell, Monster, Red Bull), chocolate, candy, ice cream, biscuits/cookies, pastries and desserts, and all alcoholic drinks (beer, wine, spirits, sparkling wine) => etk.nasi. Fast-food chains and snack bars (Burger King, McDonald's, KFC, Subway, gyros, kebab, hot dog, büfé) => etk.gyors; sit-down restaurants, cafés, patisseries and food delivery => etk.ett. Coffee, tea, bread, dairy, meat, vegetables, fruit, mineral water, juice-free basics => etk.elel. Cleaning and personal hygiene products => haz.drog. Bottle deposit (betétdíj, visszaváltási díj, DRS) => the same category as the drink it belongs to (usually etk.nasi). Fuel => koz.uza. Car parts, car service, repair, tyres, oil change, technical inspection, car accessories (e.g. lambda sensor, brake pads, filters, spark plugs, wiper blades, car battery) => koz.auto. Car wash and car care => koz.mosas. Parking, motorway vignette, road toll => koz.park. Car insurance (KGFB, casco) => koz.bizt. Vehicle tax => koz.ado. Medicine, pharmacy => eg.gyogy. Bank transfer fees, account maintenance fees, cash withdrawal fees => bank.utal; card fees and interest => bank.kartya. Use egyeb.egyeb only if nothing fits.`;
 function receiptSchema(){
   return { type: "OBJECT", properties: {
     shop: { type: "STRING" }, date: { type: "STRING", description: "YYYY-MM-DD or empty" },
@@ -1243,8 +1247,13 @@ ${CAT_RULES}`;
   return gemCall(parts, receiptSchema(), { onInfo, timeout: 90e3 });
 }
 async function gemQuick(text){
-  const schema = { type: "OBJECT", properties: { amount: { type: "NUMBER" }, currency: { type: "STRING", enum: CURS }, name: { type: "STRING" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["amount","currency","name","cat"] };
-  return gemCall([{ text: `Parse this Hungarian expense note into amount, currency (Ft/forint/HUF => HUF, €/euro => EUR, $/dollar => USD; default HUF), a short item name (Hungarian, without the amount) and a category code.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nNote: "${text}"` }], schema);
+  const schema = { type: "OBJECT", properties: { amount: { type: "NUMBER" }, currency: { type: "STRING", enum: CURS }, name: { type: "STRING" }, cat: { type: "STRING", enum: CAT_ENUM() }, shop: { type: "STRING", description: "store / webshop name exactly as written in the note, or empty" } }, required: ["amount","currency","name","cat","shop"] };
+  return gemCall([{ text: `Parse this Hungarian expense note into amount, currency (Ft/forint/HUF => HUF, €/euro => EUR, $/dollar => USD; default HUF), a short item name (Hungarian, without the amount and without the shop name), the shop or webshop name if the note contains one (copy it as written; empty string if there is none – a product brand like Hell, Cappy or Milka is NOT a shop) and a category code.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nNote: "${text}"` }], schema);
+}
+/* több tétel: bolt (ha van a szövegben) és tételenkénti kategória egy hívással */
+async function gemMulti(text, names){
+  const schema = { type: "OBJECT", properties: { shop: { type: "STRING" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { i: { type: "INTEGER" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["i","cat"] } } }, required: ["shop","items"] };
+  return gemCall([{ text: `A Hungarian purchase written from memory: "${text}".\n1) shop = the store or webshop name if the text contains one (copy it as written; empty string if none – a product brand like Hell, Cappy or Milka is NOT a shop).\n2) Assign a category code to each item below.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nItems:\n${names.map((n, i) => i + ": " + n).join("\n")}` }], schema);
 }
 async function gemClassify(names){
   const schema = { type: "ARRAY", items: { type: "OBJECT", properties: { i: { type: "INTEGER" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["i","cat"] } };
@@ -1252,21 +1261,70 @@ async function gemClassify(names){
 }
 
 /* ================= gyors bevitel: helyi értelmezés ================= */
+/* boltok: a beépített lista és a már rögzített boltnevek (a saját írásmód nyer) */
+const SHOPS = ["Interspar","Spar","Aldi","Lidl","Tesco","Penny","Auchan","CBA","Coop","Príma","Reál","dm","Rossmann","Müller","OBI","Praktiker","Bauhaus","IKEA","JYSK","Pepco","Action","Tedi","KiK","Decathlon","H&M","Deichmann","Media Markt","MediaMarkt","Euronics","eMAG","Alza","Libri","Fressnapf","MOL","OMV","Shell","Orlen","Lukoil","McDonald's","Burger King","KFC","Subway","Starbucks","Wolt","Foodora","Temu","AliExpress","Amazon"];
+function knownShops(){
+  const m = new Map();
+  for (const n of SHOPS) m.set(fold(n), n);
+  for (const s of spends().sort((a, b) => (a.at || "").localeCompare(b.at || ""))) if (s.shop && fold(s.shop)) m.set(fold(s.shop), s.shop.trim());
+  return [...m.entries()].filter(([k]) => k.length >= 2).sort((a, b) => b[0].length - a[0].length);
+}
+/* a bolt kivétele a szövegből: { shop, rest } */
+function takeShop(txt, shops){
+  const t = " " + fold(txt) + " ";
+  for (const [k, name] of shops || knownShops()) {
+    if (!t.includes(" " + k + " ")) continue;
+    // az eredeti szövegből a megfelelő szavak törlése (ékezettől, kis-nagybetűtől függetlenül)
+    const words = String(txt).split(/(\s+)/), n = k.split(" ").length;
+    for (let i = 0; i < words.length; i++) {
+      const seq = []; let j = i;
+      while (j < words.length && seq.length < n) { if (words[j].trim()) seq.push(words[j]); j++; }
+      if (seq.length === n && fold(seq.join(" ")) === k) { words.splice(i, j - i); return { shop: name, rest: words.join("").replace(/\s+/g, " ").trim() }; }
+    }
+  }
+  return { shop: "", rest: String(txt).trim() };
+}
+const NUM_RE = /\d{1,3}(?:[ .]\d{3})+(?:,\d+)?(?!\d)|\d+(?:[.,]\d+)?/g;
+const toNum = s => { s = s.trim(); return parseFloat(/^\d{1,3}([ .]\d{3})+(,\d+)?$/.test(s) ? s.replace(/[ .]/g, "").replace(",", ".") : s.replace(",", ".")); };
+const cleanName = s => s.replace(/(^|\s)(ft|huf|forint)?-?[ée]rt(?=\s|$|[.,;:])/gi, " ").replace(/(^|\s)(ft|huf|forint|eur|euro|euró|usd|dollár|dollar|db|-ért|ért)(?=\s|$|[.,;:])/gi, " ").replace(/[€$]/g, " ").replace(/\s+/g, " ").replace(/^[\s,.;:–-]+|[\s,.;:–-]+$/g, "").trim();
+/* egy tétel: „3x499 Cappy”, „3 Cappy 3x499”, „1500 Hell”, „szeletelt tarja 299” */
 function parseQuick(txt){
-  let s = " " + String(txt || "").replace(/ /g, " ") + " ";
+  let s = " " + String(txt || "").replace(/ /g, " ") + " ";
   let cur = "HUF";
   if (/€|\beur(o|ó)?\b/i.test(s)) cur = "EUR"; else if (/\$|\busd\b|\bdoll(a|á)r/i.test(s)) cur = "USD";
-  const m = s.match(/[-+]?\d{1,3}(?:[ .]\d{3})+(?:,\d+)?|[-+]?\d+(?:[.,]\d+)?/);
-  if (!m) return { amt: null, cur, name: txt.trim() };
-  let num = m[0].trim();
-  if (/^\d{1,3}([ .]\d{3})+(,\d+)?$/.test(num)) num = num.replace(/[ .]/g, "").replace(",", ".");
-  else num = num.replace(",", ".");
-  const amt = parseFloat(num);
-  let name = (s.slice(0, m.index) + " " + s.slice(m.index + m[0].length))
-    .replace(/(^|\s)(ft|huf|forint|eur|euro|euró|usd|dollár|dollar)(?=\s|$|[.,;:])/gi, " ").replace(/[€$]/g, " ")
-    .replace(/\s+/g, " ").replace(/^[\s,.;:–-]+|[\s,.;:–-]+$/g, "").trim();
-  return { amt, cur, name };
+  const mx = s.match(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d{1,3}(?:[ .]\d{3})+(?:,\d+)?(?!\d)|\d+(?:[.,]\d+)?)/i);
+  if (mx) {
+    const q = toNum(mx[1]), u = toNum(mx[2]);
+    let rest = s.slice(0, mx.index) + " " + s.slice(mx.index + mx[0].length);
+    rest = rest.replace(new RegExp("^\\s*" + mx[1].replace(".", "\\.") + "\\s*(db|x)?\\s+", "i"), " ");   // „3 Cappy 3x499”: a darabszám ne maradjon a névben
+    return { amt: Math.round(q * u * 100) / 100, qty: q, unit: u, cur, name: cleanName(rest) };
+  }
+  const nums = [...s.matchAll(NUM_RE)];
+  if (!nums.length) return { amt: null, cur, name: cleanName(s) };
+  const pick = nums.reduce((best, m) => toNum(m[0]) > toNum(best[0]) ? m : best);   // több szám közül a legnagyobb az ár
+  const name = cleanName(s.slice(0, pick.index) + " " + s.slice(pick.index + pick[0].length));
+  return { amt: toNum(pick[0]), cur, name };
 }
+const isDeposit = n => /bet(e|é)td(i|í)j|visszav(a|á)lt|\bdrs\b|\bbet(e|é)t\b/i.test(n || "");
+/* a teljes bevitel: + jel vagy új sor választja el a tételeket; bolt bárhol; ha az első rész csak bolt + összeg, az a végösszeg */
+function parseEntry(txt){
+  const raw = String(txt || "").split(/\n|\+/).map(x => x.trim()).filter(Boolean);
+  const shops = knownShops();
+  let shop = "", total = null, cur = "HUF";
+  const lines = [];
+  raw.forEach((part, i) => {
+    const t = takeShop(part, shop ? [] : shops); if (t.shop) shop = t.shop;
+    const p = parseQuick(t.rest);
+    if (p.cur !== "HUF") cur = p.cur;
+    if (i === 0 && raw.length > 1 && p.amt != null && !p.name && !p.qty) { total = p.amt; return; }   // „ALDI 4010 + …”
+    if (p.amt == null && !p.name) return;
+    lines.push({ ...p, src: part });
+  });
+  // kategória: saját szótár / kulcsszó; a betétdíj az előtte álló ital kategóriáját kapja
+  lines.forEach((l, i) => { l.sc = isDeposit(l.name) && i > 0 ? lines[i - 1].sc : (l.name ? guessSc(l.name) : null); l.dep = isDeposit(l.name) && i > 0; });
+  return { lines, shop, total, cur, multi: lines.length > 1 };
+}
+const qtyTxt = l => l.qty ? ` (${fmtN(l.qty, 2)} × ${fmtN(l.unit, 2)})` : "";
 
 /* ================= képek előkészítése ================= */
 function blobToB64(b){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); }); }
@@ -1298,62 +1356,108 @@ function pickFiles(inputId){
 
 /* ================= gyors bevitel drawer ================= */
 function openQuick(){
-  const st = { txt: "", p: null, sc: null, scManual: false, pay: LS.get("lastPay", "rev"), d: today(), who: "geza", busy: false, aiFor: "" };
+  const st = { txt: "", e: null, sc: null, scManual: false, shopManual: false, aiShop: "", pay: LS.get("lastPay", "rev"), d: today(), busy: false, aiFor: "" };
+  const money = (v, cur) => cur === "HUF" ? fmt(v) : fmtN(v, 2) + " " + curSym(cur);
   const preview = () => {
-    const p = st.p;
-    if (!p || p.amt == null || isNaN(p.amt)) return `<p class="muted small" style="margin:0">Írd be egyben, pl. <b>1500 Ft Hell energiaital</b>, <b>12,90 € parkolás</b> vagy <b>4 990 Lidl</b>.</p>`;
-    const huf = p.cur === "HUF" ? p.amt : p.amt * fx(p.cur);
-    return `<div class="qprev"><span class="num big">${p.cur === "HUF" ? fmt(p.amt) : fmtN(p.amt, 2) + " " + curSym(p.cur) + ` <span class="muted small">≈ ${fmt(huf)}</span>`}</span><span class="nm">${esc(p.name || "(név nélkül)")}</span>${st.busy ? `<span class="muted small">AI besorolás…</span>` : ""}</div>`;
+    const e = st.e;
+    if (!e || !e.lines.length || e.lines.every(l => l.amt == null)) return `<p class="muted small" style="margin:0">Egy tétel: <b>1500 Hell ALDI</b>, <b>12,90 € parkolás</b>.<br>Több tétel: válaszd el <b>+</b> jellel vagy új sorral (Shift+Enter), pl. <b>ALDI 4010 + 3x499 Cappy + 3x50 betétdíj + bio tojás 559</b>. Ha az első rész csak bolt és összeg, az a blokk végösszege.</p>`;
+    const shop = $("#qShop") ? $("#qShop").value.trim() : e.shop;
+    if (!e.multi) {
+      const l = e.lines[0]; if (l.amt == null) return `<p class="muted small" style="margin:0">Nem találok összeget.</p>`;
+      const huf = e.cur === "HUF" ? l.amt : l.amt * fx(e.cur);
+      return `<div class="qprev"><span class="num big">${money(l.amt, e.cur)}${e.cur !== "HUF" ? ` <span class="muted small">≈ ${fmt(huf)}</span>` : ""}</span><span class="nm">${esc(l.name || "(név nélkül)")}${esc(qtyTxt(l))}</span>${shop ? `<span class="chip">${esc(shop)}</span>` : ""}${st.busy ? `<span class="muted small">AI…</span>` : ""}</div>`;
+    }
+    const sum = e.lines.reduce((x, l) => x + (+l.amt || 0), 0), bad = e.total != null && Math.abs(e.total - sum) > 0.5;
+    return `<div class="rtot ${bad ? "bad" : ""}">
+      ${e.lines.map(l => `<span>${esc(l.name || "(név nélkül)")}<span class="muted small">${esc(qtyTxt(l))}${l.dep ? " · az előző tétel kategóriájában" : l.sc ? " · " + esc(SUBS[l.sc].name) : ""}</span></span><span class="num">${l.amt == null ? "?" : money(l.amt, e.cur)}</span>`).join("")}
+      <span><b>Tételek összege</b> (${e.lines.length})</span><span class="num"><b>${money(sum, e.cur)}</b></span>
+      ${e.total != null ? `<span>Végösszeg${shop ? " · " + esc(shop) : ""}</span><span class="num">${money(e.total, e.cur)}</span>` : shop ? `<span>Bolt</span><span>${esc(shop)}</span>` : ""}
+      ${bad ? `<span class="warnline">${ICON.warn} Eltérés: ${money(sum - e.total, e.cur)}</span>` : ""}</div>
+      <p class="muted small" style="margin:0">A következő lépésben soronként átnézheted a kategóriákat, és ott mentesz.${st.busy ? " AI besorolás…" : ""}</p>`;
   };
   openDrawer(() => "Gyors költés", () => `
-    <div class="field"><label for="qT">Mit, mennyiért?</label><input class="inp" id="qT" autocomplete="off" autofocus placeholder="1500 Ft Hell energiaital" enterkeyhint="done"></div>
-    <div class="field"><label for="qSc">Kategória</label><select class="inp" id="qSc">${scOptions("egyeb.egyeb")}</select></div>
+    <div class="field"><label for="qT">Mit, mennyiért, hol? <span class="muted small">(több tétel: + vagy Shift+Enter)</span></label><textarea class="inp" id="qT" rows="1" autocomplete="off" autofocus placeholder="1500 Hell ALDI" enterkeyhint="done" style="resize:none;overflow:hidden;line-height:1.4"></textarea></div>
+    <div class="two"><div class="field" id="qScF"><label for="qSc">Kategória</label><select class="inp" id="qSc">${scOptions("egyeb.egyeb")}</select></div>
+      <div class="field"><label for="qShop">Bolt</label><input class="inp" id="qShop" autocomplete="off" placeholder="nem kötelező"></div></div>
     <div class="field"><label>Fizetés</label><div class="seg wrap" id="qPay">${PAY().map(([k, n]) => `<button data-dr="pay:${k}" aria-pressed="${st.pay === k}">${esc(n)}</button>`).join("")}</div></div>
     <div class="two"><div class="field"><label for="qD">Dátum</label><input class="inp" id="qD" type="date" value="${st.d}"></div>
-      <div class="field"><label for="qW">Kié</label><select class="inp" id="qW"><option value="geza">Enyém</option><option value="reka">${esc(pE())}</option></select></div></div>
-    <div class="actions"><button class="btn primary" data-dr="save">${ICON.check} Mentés</button></div>`, preview);
+      <div class="field"><label for="qW">Kié</label><select class="inp" id="qW"><option value="geza">Enyém</option><option value="reka">${esc(pE())}</option></select></div></div>`,
+    () => `${preview()}<div class="actions"><button class="btn primary" data-dr="save">${ICON.check} ${st.e && st.e.multi ? "Tovább az ellenőrzéshez" : "Mentés"}</button></div>`);
   let tm = null;
+  const grow = t => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
+  const words = s => (s || "").split(/\s+/).filter(w => w.length > 1).length;
   const upd = () => {
-    st.txt = $("#qT").value; st.p = parseQuick(st.txt);
-    if (!st.scManual) { const g = st.p.name ? guessSc(st.p.name) : null; if (g) { st.sc = g; $("#qSc").value = g; } }
+    const t = $("#qT"); grow(t);
+    st.txt = t.value; st.e = parseEntry(st.txt);
+    if (!st.shopManual) $("#qShop").value = st.e.shop || (st.aiShop && fold(st.txt).includes(fold(st.aiShop)) ? st.aiShop : "");
+    $("#qScF").hidden = st.e.multi;
+    const l = st.e.lines[0];
+    if (!st.e.multi && l && !st.scManual) { const g = l.sc || (st.e.shop ? guessSc(st.e.shop) : null); if (g) { st.sc = g; $("#qSc").value = g; } }
     DR.refresh();
     clearTimeout(tm);
-    if (!st.scManual && st.p.name && st.p.name.length > 2 && !guessSc(st.p.name) && gemKey()) tm = setTimeout(aiCat, 900);
+    // AI: ha nincs kategória, vagy nem ismert fel boltot (egy tételnél, legalább két szónál)
+    if (!st.e.multi && l && gemKey() && ((!st.scManual && l.name && l.name.length > 2 && !l.sc) || (!st.e.shop && !st.shopManual && words(l.name) >= 2))) tm = setTimeout(aiOne, 900);
   };
-  const aiCat = async () => {
+  const aiOne = async () => {
     const txt = st.txt; if (st.aiFor === txt) return; st.aiFor = txt; st.busy = true; DR.refresh();
-    try { const r = await gemQuick(txt); if ($("#qT") && $("#qT").value === txt && !st.scManual && SUBS[r.cat]) { st.sc = r.cat; $("#qSc").value = r.cat; } }
-    catch (x) { if (!x.nokey) toast(x.message); }
+    try {
+      const r = await gemQuick(txt);
+      if (!$("#qT") || $("#qT").value !== txt) return;
+      if (!st.scManual && !(st.e.lines[0] || {}).sc && SUBS[r.cat]) { st.sc = r.cat; $("#qSc").value = r.cat; }
+      // a boltot csak akkor fogadjuk el, ha tényleg szerepel a szövegben; a nevet is akkor vesszük az AI-tól
+      if (r.shop && fold(r.shop) && fold(txt).includes(fold(r.shop)) && !st.e.shop) {
+        st.aiShop = r.shop; if (!st.shopManual) $("#qShop").value = r.shop;
+        const l = st.e.lines[0]; if (l && r.name) l.name = r.name;
+      }
+    } catch (x) { if (!x.nokey) toast(x.message); }
     finally { st.busy = false; if (DR.open) DR.refresh(); }
   };
   setTimeout(() => { const t = $("#qT"); if (!t) return; t.addEventListener("input", upd); t.focus();
-    t.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); DR.handler("save"); } }, true);
-    $("#qSc").addEventListener("change", e => { st.sc = e.target.value; st.scManual = true; }); }, 0);
-  DR.handler = (what) => {
+    t.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); DR.handler("save"); } }, true);
+    $("#qSc").addEventListener("change", e => { st.sc = e.target.value; st.scManual = true; });
+    $("#qShop").addEventListener("input", () => { st.shopManual = true; DR.refresh(); }); }, 0);
+  DR.handler = async (what) => {
     if (what.startsWith("pay:")) { st.pay = what.slice(4); document.querySelectorAll("#qPay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); return; }
-    if (what === "save") {
-      const p = parseQuick($("#qT").value);
-      if (p.amt == null || isNaN(p.amt) || !p.amt) return toast("Nem találok összeget a szövegben.");
-      const sc = $("#qSc").value, d = $("#qD").value || today(), who = $("#qW").value;
-      const name = p.name || SUBS[sc].name;
-      learnSc(name, sc); LS.set("lastPay", st.pay);
-      const doSave = () => {
-        const id = uid("k");
-        saveSpend(id, { d, who, pay: st.pay, cur: p.cur, shop: "", src: "quick", lines: [{ n: name, a: p.amt, sc }], at: nowIso() });
-        closeDrawer(); toast(`Rögzítve: ${name}, ${p.cur === "HUF" ? fmt(p.amt) : fmtN(p.amt, 2) + " " + curSym(p.cur)}`, () => { delete D().spend[id]; D().deleted["spend/" + id] = nowIso(); persist(); renderAll(); });
-      };
-      const m = who === "geza" ? planMatches(sc, d) : [];
-      if (!m.length) return doSave();
-      askPlanMatch(m, name, Math.round(p.cur === "HUF" ? p.amt : p.amt * fx(p.cur)), doSave);
+    if (what !== "save" || st.busy) return;
+    const e = parseEntry($("#qT").value), d = $("#qD").value || today(), who = $("#qW").value;
+    let shop = $("#qShop").value.trim();
+    if (!e.lines.length || e.lines.some(l => l.amt == null || isNaN(l.amt))) return toast(e.lines.length > 1 ? "Van olyan tétel, amelyikben nem találok összeget." : "Nem találok összeget a szövegben.");
+    LS.set("lastPay", st.pay);
+    if (e.multi) {
+      // az ismeretlen kategóriák (és a bolt, ha nincs) az AI-tól, egy hívással
+      const unk = e.lines.map((l, i) => [l, i]).filter(([l]) => !l.sc);
+      if (gemKey() && (unk.length || !shop)) {
+        st.busy = true; DR.refresh();
+        try {
+          const r = await gemMulti($("#qT").value, unk.map(([l]) => l.name || l.src));
+          for (const o of r.items || []) { const x = unk[o.i]; if (x && SUBS[o.cat]) x[0].sc = o.cat; }
+          if (!shop && r.shop && fold($("#qT").value).includes(fold(r.shop))) shop = r.shop;
+        } catch (x) { if (!x.nokey) toast(x.message + " – a kategóriákat kézzel állítsd be."); }
+        finally { st.busy = false; }
+      }
+      e.lines.forEach((l, i) => { if (l.dep && i > 0) l.sc = e.lines[i - 1].sc; });
+      const lines = e.lines.map(l => ({ n: (l.name || "") + qtyTxt(l), a: l.amt, sc: l.sc || "egyeb.egyeb" }));
+      return openSpendEdit(null, { d, who, pay: st.pay, cur: e.cur, shop, total: e.total, lines, src: "quick" });
     }
+    const p = e.lines[0], sc = $("#qSc").value;
+    const name = (p.name || SUBS[sc].name) + qtyTxt(p);
+    if (p.name) learnSc(p.name, sc);
+    const doSave = () => {
+      const id = uid("k");
+      saveSpend(id, { d, who, pay: st.pay, cur: e.cur, shop, src: "quick", lines: [{ n: name, a: p.amt, sc }], at: nowIso() });
+      closeDrawer(); toast(`Rögzítve: ${name}${shop ? " (" + shop + ")" : ""}, ${e.cur === "HUF" ? fmt(p.amt) : fmtN(p.amt, 2) + " " + curSym(e.cur)}`, () => { delete D().spend[id]; D().deleted["spend/" + id] = nowIso(); persist(); renderAll(); });
+    };
+    const m = who === "geza" ? planMatches(sc, d) : [];
+    if (!m.length) return doSave();
+    askPlanMatch(m, name, Math.round(e.cur === "HUF" ? p.amt : p.amt * fx(e.cur)), doSave);
   };
 }
 
 /* ================= duplikáció-figyelés: nyitott tervsor ugyanabban a kategóriában ================= */
 function planMatches(sc, d){
-  const k = mkOfDate(d), mo = month(k); if (!mo) return [];
-  return items().filter(it => !it.off && itemSc(it) === sc).map(it => ({ k, it, ln: mo.lines[it.id] }))
-    .filter(x => x.ln && !x.ln.done && (+x.ln.p || 0) > 0);
+  const k = mkOfDate(d), mo = month(k); if (!mo || !sc || sc === "egyeb.egyeb") return [];   // az „Egyéb” túl általános az egyeztetéshez
+  return items().filter(it => !it.off && !isIncomeCat(it.cat) && itemSc(it) === sc).map(it => ({ k, it, ln: mo.lines[it.id] }))
+    .filter(x => x.ln && !x.ln.done && remaining({ ...x.ln, p: +x.ln.p || 0 }) > 0);
 }
 function askPlanMatch(m, name, huf, onSeparate){
   let sel = 0;
@@ -2420,7 +2524,7 @@ async function openStore(store){
   startApp(); status("Betöltve", "ok"); if (pending) flush();
 }
 function startApp(){
-  try { migrateBank(); migrateFood(); } catch (x) { console.warn(x); }
+  try { migrateBank(); migrateFood(); migrateFuel(); } catch (x) { console.warn(x); }
   S.mk = S.mk || currentMk();
   if (!ST.store) status("nem ment", "demo");
   S.tab = LS.get("tab", "month"); if (!["month","year","stats","assets","items","settings"].includes(S.tab)) S.tab = "month";
@@ -2532,6 +2636,17 @@ function migrateFood(){
   for (const [id, o] of Object.entries(D().statmap || {})) if (o.sc === "etk.alk") D().statmap[id] = { sc: "etk.nasi", u: nowIso() };
   st.mig = [...(st.mig || []), "food1"]; stamp(st);
   if (n) { persist(); toast(`${n} étkezési tétel átsorolva (Nasi és ital / Gyorsétterem).`); }
+}
+/* egyszeri: az üzemanyag tervsor(ok) biztosan az Autó költségek / Üzemanyag alá kerüljenek */
+function migrateFuel(){
+  const st = D().settings; if ((st.mig || []).includes("fuel1")) return;
+  const re = /uzemanyag|benzin|gazolaj|diesel|dizel|tankol|\btank\b/;
+  const names = [];
+  for (const it of D().items) if (!isIncomeCat(it.cat) && re.test(fold(it.name)) && itemSc(it) !== "koz.uza") {
+    D().statmap = { ...(D().statmap || {}), [it.id]: { sc: "koz.uza", u: nowIso() } }; names.push(it.name);
+  }
+  st.mig = [...(st.mig || []), "fuel1"]; stamp(st);
+  if (names.length) { persist(); toast(`Autó költségek / Üzemanyag alá sorolva: ${names.join(", ")}.`); }
 }
 /* egyszeri: az „Egyéb”-be került banki díjak átsorolása */
 function migrateBank(){
@@ -2676,7 +2791,7 @@ function renderStats(){
   const jc = ms.map(k => ({ label: mkShort(k), full: mkName(k), cur: k === cur, values: { n: junkRows.filter(r => r.k === k).reduce((x, r) => x + r.amt, 0) } }));
   if (ms.length) stackedBars($("#stJunk"), jc, [{ id: "n", name: "Nasi és ital", color: cssVar("--s2") }], { id: "sj", label: "Nasi és ital havonta" });
 }
-const SHORT = ["Lakás, rezsi","Kommunikáció","Étkezés","Háztartás","Közlekedés","Gyerekek","Egészség","Hobbi","Egyéb"];
+const SHORT = ["Lakás, rezsi","Kommunikáció","Étkezés","Háztartás","Autó","Gyerekek","Egészség","Hobbi","Egyéb"];
 /* a trend sorozatai: főcsoportok (8 szín + szürke), vagy kiválasztott csoportnál annak alkategóriái */
 function trendSeries(rows, ms){
   const f = S.sf, key = f.g ? "g:" + f.g : "all", hide = (f.hide = f.hide || {})[key] || {};
