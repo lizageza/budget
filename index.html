@@ -1188,9 +1188,9 @@ async function gemCall(parts, schema, opt){
   if (!cands.length) throw new Error("Nem találok használható Gemini Flash modellt ehhez a kulcshoz.");
   const timeout = opt.timeout || 75e3;
   let last;
-  for (const m of cands.slice(0, 4)) {
+  for (const m of cands.slice(0, opt.models || 4)) {
     let think = thinkCfg(m);
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= (opt.tries || 2); attempt++) {
       GEMST.info = `${m}${attempt > 1 ? ", 2. próbálkozás" : ""}`; if (opt.onInfo) opt.onInfo(GEMST.info);
       const gc = { temperature: 0.1, responseMimeType: "application/json", responseSchema: schema };
       if (think) gc.thinkingConfig = think;
@@ -1199,7 +1199,7 @@ async function gemCall(parts, schema, opt){
       catch (x) {
         // hálózati hiba („Load failed”) vagy időtúllépés: ugyanazzal még egyszer, aztán a következő modell
         last = new Error(x.name === "AbortError" ? `Időtúllépés (${Math.round(timeout / 1000)} mp) – ${m}` : "Hálózati hiba (" + (x.message || "Load failed") + ") – " + m);
-        if (attempt === 1) { await new Promise(r => setTimeout(r, 1500)); continue; }
+        if (attempt < (opt.tries || 2)) { await new Promise(r => setTimeout(r, 1500)); continue; }
         break;
       }
       if (r.ok) {
@@ -1215,7 +1215,7 @@ async function gemCall(parts, schema, opt){
       if (r.status === 429) { if (fixed) throw last; break; }                                        // más modellnek lehet külön kerete
       if (r.status === 403 || (r.status === 400 && /API key/i.test(last.message))) throw last;
       if (r.status === 404) { LS.set("gemModels", null); break; }
-      if (r.status >= 500 && attempt === 1) { await new Promise(r => setTimeout(r, 2500)); continue; } // 503: túlterhelt, rövid várakozás után újra
+      if (r.status >= 500 && attempt < (opt.tries || 2)) { await new Promise(r => setTimeout(r, 2500)); continue; } // 503: túlterhelt, rövid várakozás után újra
       break;
     }
   }
@@ -1248,12 +1248,12 @@ ${CAT_RULES}`;
 }
 async function gemQuick(text){
   const schema = { type: "OBJECT", properties: { amount: { type: "NUMBER" }, currency: { type: "STRING", enum: CURS }, name: { type: "STRING" }, cat: { type: "STRING", enum: CAT_ENUM() }, shop: { type: "STRING", description: "store / webshop name exactly as written in the note, or empty" } }, required: ["amount","currency","name","cat","shop"] };
-  return gemCall([{ text: `Parse this Hungarian expense note into amount, currency (Ft/forint/HUF => HUF, €/euro => EUR, $/dollar => USD; default HUF), a short item name (Hungarian, without the amount and without the shop name), the shop or webshop name if the note contains one (copy it as written; empty string if there is none – a product brand like Hell, Cappy or Milka is NOT a shop) and a category code.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nNote: "${text}"` }], schema);
+  return gemCall([{ text: `Parse this Hungarian expense note into amount, currency (Ft/forint/HUF => HUF, €/euro => EUR, $/dollar => USD; default HUF), a short item name (Hungarian, without the amount and without the shop name), the shop or webshop name if the note contains one (copy it as written; empty string if there is none – a product brand like Hell, Cappy or Milka is NOT a shop) and a category code.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nNote: "${text}"` }], schema, { timeout: 15e3, models: 1, tries: 1 });
 }
 /* több tétel: bolt (ha van a szövegben) és tételenkénti kategória egy hívással */
 async function gemMulti(text, names){
   const schema = { type: "OBJECT", properties: { shop: { type: "STRING" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { i: { type: "INTEGER" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["i","cat"] } } }, required: ["shop","items"] };
-  return gemCall([{ text: `A Hungarian purchase written from memory: "${text}".\n1) shop = the store or webshop name if the text contains one (copy it as written; empty string if none – a product brand like Hell, Cappy or Milka is NOT a shop).\n2) Assign a category code to each item below.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nItems:\n${names.map((n, i) => i + ": " + n).join("\n")}` }], schema);
+  return gemCall([{ text: `A Hungarian purchase written from memory: "${text}".\n1) shop = the store or webshop name if the text contains one (copy it as written; empty string if none – a product brand like Hell, Cappy or Milka is NOT a shop).\n2) Assign a category code to each item below.\nCategories:\n${CAT_HELP()}\n${CAT_RULES}\nItems:\n${names.map((n, i) => i + ": " + n).join("\n")}` }], schema, { timeout: 20e3, models: 2, tries: 1 });
 }
 async function gemClassify(names){
   const schema = { type: "ARRAY", items: { type: "OBJECT", properties: { i: { type: "INTEGER" }, cat: { type: "STRING", enum: CAT_ENUM() } }, required: ["i","cat"] } };
@@ -1381,8 +1381,11 @@ function openQuick(){
       <div class="field"><label for="qShop">Bolt</label><input class="inp" id="qShop" autocomplete="off" placeholder="nem kötelező"></div></div>
     <div class="field"><label>Fizetés</label><div class="seg wrap" id="qPay">${PAY().map(([k, n]) => `<button data-dr="pay:${k}" aria-pressed="${st.pay === k}">${esc(n)}</button>`).join("")}</div></div>
     <div class="two"><div class="field"><label for="qD">Dátum</label><input class="inp" id="qD" type="date" value="${st.d}"></div>
-      <div class="field"><label for="qW">Kié</label><select class="inp" id="qW"><option value="geza">Enyém</option><option value="reka">${esc(pE())}</option></select></div></div>`,
-    () => `${preview()}<div class="actions"><button class="btn primary" data-dr="save">${ICON.check} ${st.e && st.e.multi ? "Tovább az ellenőrzéshez" : "Mentés"}</button></div>`);
+      <div class="field"><label for="qW">Kié</label><select class="inp" id="qW"><option value="geza">Enyém</option><option value="reka">${esc(pE())}</option></select></div></div>
+    <div id="qPrev" style="display:grid;gap:14px">${preview()}</div>
+    <div class="actions"><button class="btn primary" type="button" data-dr="save" id="qSave">${ICON.check} <span>Mentés</span></button></div>`);
+  // csak az előnézet és a gomb felirata frissül, maga a gomb nem cserélődik (különben telefonon elveszhet a koppintás)
+  DR.refresh = () => { const el = $("#qPrev"); if (el) el.innerHTML = preview(); const b = $("#qSave span"); if (b) b.textContent = st.saving ? "Feldolgozás…" : st.e && st.e.multi ? "Tovább az ellenőrzéshez" : "Mentés"; };
   let tm = null;
   const grow = t => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; };
   const words = s => (s || "").split(/\s+/).filter(w => w.length > 1).length;
@@ -1402,7 +1405,7 @@ function openQuick(){
     const txt = st.txt; if (st.aiFor === txt) return; st.aiFor = txt; st.busy = true; DR.refresh();
     try {
       const r = await gemQuick(txt);
-      if (!$("#qT") || $("#qT").value !== txt) return;
+      if (!DR.open || !$("#qT") || $("#qT").value !== txt || st.aiFor !== txt) return;
       if (!st.scManual && !(st.e.lines[0] || {}).sc && SUBS[r.cat]) { st.sc = r.cat; $("#qSc").value = r.cat; }
       // a boltot csak akkor fogadjuk el, ha tényleg szerepel a szövegben; a nevet is akkor vesszük az AI-tól
       if (r.shop && fold(r.shop) && fold(txt).includes(fold(r.shop)) && !st.e.shop) {
@@ -1418,7 +1421,8 @@ function openQuick(){
     $("#qShop").addEventListener("input", () => { st.shopManual = true; DR.refresh(); }); }, 0);
   DR.handler = async (what) => {
     if (what.startsWith("pay:")) { st.pay = what.slice(4); document.querySelectorAll("#qPay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); return; }
-    if (what !== "save" || st.busy) return;
+    if (what !== "save" || st.saving) return;           // a háttérben futó AI nem tartja vissza a mentést
+    st.aiFor = $("#qT").value;
     const e = parseEntry($("#qT").value), d = $("#qD").value || today(), who = $("#qW").value;
     let shop = $("#qShop").value.trim();
     if (!e.lines.length || e.lines.some(l => l.amt == null || isNaN(l.amt))) return toast(e.lines.length > 1 ? "Van olyan tétel, amelyikben nem találok összeget." : "Nem találok összeget a szövegben.");
@@ -1427,13 +1431,13 @@ function openQuick(){
       // az ismeretlen kategóriák (és a bolt, ha nincs) az AI-tól, egy hívással
       const unk = e.lines.map((l, i) => [l, i]).filter(([l]) => !l.sc);
       if (gemKey() && (unk.length || !shop)) {
-        st.busy = true; DR.refresh();
+        st.saving = true; DR.refresh();
         try {
           const r = await gemMulti($("#qT").value, unk.map(([l]) => l.name || l.src));
           for (const o of r.items || []) { const x = unk[o.i]; if (x && SUBS[o.cat]) x[0].sc = o.cat; }
           if (!shop && r.shop && fold($("#qT").value).includes(fold(r.shop))) shop = r.shop;
         } catch (x) { if (!x.nokey) toast(x.message + " – a kategóriákat kézzel állítsd be."); }
-        finally { st.busy = false; }
+        finally { st.saving = false; if (DR.open) DR.refresh(); }
       }
       e.lines.forEach((l, i) => { if (l.dep && i > 0) l.sc = e.lines[i - 1].sc; });
       const lines = e.lines.map(l => ({ n: (l.name || "") + qtyTxt(l), a: l.amt, sc: l.sc || "egyeb.egyeb" }));
