@@ -420,6 +420,15 @@ table.t tr.sub.deep td.nm{padding-left:46px}
 .kpi.clk{cursor:pointer}.kpi.clk:hover{background:var(--surface-2)}
 .spl .nm .sub.one{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* gyors bevitel: korábbi tétel kereső */
+.qfind{position:relative}
+.qfindl{display:grid;border:1px solid var(--line);border-radius:10px;background:var(--surface);max-height:260px;overflow:auto;margin-top:4px}
+.qfindl button{display:flex;justify-content:space-between;gap:10px;align-items:baseline;text-align:left;padding:9px 10px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:inherit;cursor:pointer}
+.qfindl button:last-child{border-bottom:0}
+.qfindl button:hover,.qfindl button:focus-visible{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.qfindl .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qfindl .small{white-space:nowrap}
+
 </style>
 </head>
 <body>
@@ -456,7 +465,7 @@ const SEED = {"app": "budget", "version": 1, "savedAt": null, "settings": {"reka
 <script>
 "use strict";
 /* ================= config ================= */
-const APP_VERSION = "1.3 · 2026.11.11. 19:29";   // a build.py írja be a build idejét
+const APP_VERSION = "1.3 · 2026.11.11. 19:46";   // a build.py írja be a build idejét
 const CLIENT_ID_DEFAULT = "9dc570fe-f641-46ed-93be-5414be4ae0c9";            // Microsoft app (client) ID – a Beállításokban is megadható
 const GRAPH_SCOPES = ["Files.ReadWrite"];
 const FILE = "budget.json";
@@ -1246,6 +1255,11 @@ const CAT_HELP = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s, n]) =
 const CAT_ENUM = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s]) => g.id + "." + s));
 const CAT_RULES = `Category rules: chips, crisps, salty snacks, soft drinks (cola, Pepsi, Sprite, Fanta), energy drinks (Hell, Monster, Red Bull), chocolate, candy, ice cream, biscuits/cookies, pastries and desserts, and all alcoholic drinks (beer, wine, spirits, sparkling wine) => etk.nasi. Fast-food chains and snack bars (Burger King, McDonald's, KFC, Subway, gyros, kebab, hot dog, büfé) => etk.gyors; sit-down restaurants, cafés, patisseries and food delivery => etk.ett. Coffee, tea, bread, dairy, meat, vegetables, fruit, mineral water, juice-free basics => etk.elel. Cleaning and personal hygiene products => haz.drog. Bottle deposit (betétdíj, visszaváltási díj, DRS) => the same category as the drink it belongs to (usually etk.nasi). Fuel => koz.uza. Car parts, car service, repair, tyres, oil change, technical inspection, car accessories (e.g. lambda sensor, brake pads, filters, spark plugs, wiper blades, car battery) => koz.auto. Car wash and car care => koz.mosas. Parking, motorway vignette, road toll => koz.park. Car insurance (KGFB, casco) => koz.bizt. Vehicle tax => koz.ado. Medicine, pharmacy => eg.gyogy. Bank transfer fees, account maintenance fees, cash withdrawal fees => bank.utal; card fees and interest => bank.kartya. Use egyeb.egyeb only if nothing fits.`;
 /* ================= blokk szövegből (bármely külső AI válasza, a program AI nélkül értelmezi) ================= */
+async function copyRcPrompt(perm){
+  const p = textReceiptPrompt(perm);
+  try { await navigator.clipboard.writeText(p); toast(perm ? "Az állandó prompt a vágólapon. Illeszd be a saját GPT / Gem / projekt utasításai közé." : "A prompt a vágólapon. Add be a blokk képével együtt az AI-nak."); }
+  catch (x) { download(perm ? "blokk-prompt-allando.txt" : "blokk-prompt.txt", p, "text/plain"); toast("A vágólap nem érhető el, letöltöttem fájlként."); }
+}
 /* perm = állandó használatra (saját GPT, Gem, Claude-projekt): nincs benne a napi dátum, és minden új kép új blokk */
 function textReceiptPrompt(perm){
   return `${perm ? "You are a receipt reader. Every image or PDF I send you is a NEW purchase: answer each one with a new block in the format below, even if I send nothing else with it.\n\n" : ""}Read the attached Hungarian shop receipt / invoice / online order confirmation (image, photo or PDF). If there are several images, they are consecutive, possibly overlapping parts of ONE long receipt: list every product line exactly once.
@@ -1456,7 +1470,7 @@ function parseEntry(txt){
   lines.forEach((l, i) => { l.sc = isDeposit(l.name) && i > 0 ? lines[i - 1].sc : (l.name ? guessSc(l.name) : null); l.dep = isDeposit(l.name) && i > 0; });
   return { lines, shop, total, cur, multi: lines.length > 1 };
 }
-const qtyTxt = l => l.qty ? ` (${fmtN(l.qty, 2)} × ${fmtN(l.unit, 2)})` : "";
+const qtyTxt = l => l.qty && l.qty !== 1 ? ` (${fmtN(l.qty, 2)} × ${fmtN(l.unit, 2)})` : "";
 
 /* ================= képek előkészítése ================= */
 function blobToB64(b){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); }); }
@@ -1493,17 +1507,23 @@ function quickTextOf(name, amt, cur){
   if (mq) return `${mq[1]}x${mq[2].trim()} ${name.slice(0, mq.index).trim()}`;
   return `${cur === "HUF" ? fmtN(amt, 0).replace(/\s/g, "") + " Ft" : fmtN(amt, 2) + " " + curSym(cur)} ${name || ""}`.trim();
 }
-/* gyakori egytételes költések az elmúlt 90 napból (név + összeg + pénznem); legalább kétszer */
-function quickFavs(n){
-  const dd = new Date(Date.now() - 90 * 864e5), from = `${dd.getFullYear()}-${pad(dd.getMonth() + 1)}-${pad(dd.getDate())}`, m = {};
+/* minden korábbi saját tétel (a blokkok sorai is) névenként; a legutóbbi előfordulás adatai + darabszám */
+function itemIndex(){
+  const m = {};
   for (const s of spends()) {
-    if ((s.who || "geza") !== "geza" || (s.lines || []).length !== 1 || (s.d || "") < from) continue;
-    const l = s.lines[0]; if (!l.n || l.a == null) continue;
-    const key = fold(l.n) + "|" + l.a + "|" + (s.cur || "HUF");
-    const o = m[key] = m[key] || { n: 0, last: "", name: l.n, amt: +l.a, cur: s.cur || "HUF" };
-    o.n++; if ((s.d || "") + (s.at || "") >= o.last) { o.last = (s.d || "") + (s.at || ""); o.shop = s.shop || ""; o.sc = l.sc; o.pay = s.pay; }
+    if ((s.who || "geza") !== "geza") continue;
+    for (const l of s.lines || []) {
+      const raw = String(l.n || "").trim(); if (!raw || l.a == null) continue;
+      const mq = raw.match(QTY_RE), name = mq ? raw.slice(0, mq.index).trim() : raw;
+      const q = mq ? parseFloat(mq[1].replace(",", ".")) || 1 : 1, unit = Math.round((+l.a || 0) / q * 100) / 100;
+      const k = fold(name); if (!k) continue;
+      const o = m[k] = m[k] || { name, n: 0, last: "" };
+      o.n++;
+      const when = (s.d || "") + (s.at || "");
+      if (when >= o.last) Object.assign(o, { last: when, name, unit, cur: s.cur || "HUF", shop: s.shop || "", sc: l.sc, pay: s.pay, d: s.d });
+    }
   }
-  return Object.values(m).filter(o => o.n >= 2).sort((a, b) => b.n - a.n || b.last.localeCompare(a.last)).slice(0, n);
+  return Object.values(m);
 }
 /* „Ismét”: egy korábbi költés újra, mai dátummal, minden átírható; az eredeti nem változik */
 function repeatSpend(sid){
@@ -1514,7 +1534,7 @@ function repeatSpend(sid){
 }
 function openQuick(pre){
   const st = { txt: "", e: null, sc: null, scManual: false, shopManual: false, aiShop: "", pay: (pre && pre.pay) || LS.get("lastPay", "rev"), d: today(), busy: false, aiFor: "" };
-  const favs = pre ? [] : quickFavs(6);
+  let found = [];
   const money = (v, cur) => cur === "HUF" ? fmt(v) : fmtN(v, 2) + " " + curSym(cur);
   const preview = () => {
     const e = st.e;
@@ -1535,7 +1555,7 @@ function openQuick(pre){
   };
   openDrawer(() => pre ? "Ismét rögzítem" : "Gyors költés", () => `
     ${pre ? `<p class="muted small" style="margin:0">Egy korábbi költés másolata. Bármit átírhatsz; az eredeti nem változik.</p>` : ""}
-    ${favs.length ? `<div class="field"><label>Gyakori</label><div class="chips" style="display:flex;flex-wrap:wrap;gap:6px">${favs.map((o, i) => `<button class="chipbtn" type="button" data-dr="fav:${i}" title="${esc(o.n + "× az elmúlt 90 napban")}">${esc(o.name)} <b>${o.cur === "HUF" ? fmt(o.amt, { noUnit: true }) : fmtN(o.amt, 2) + " " + curSym(o.cur)}</b>${o.shop ? ` <span class="muted">· ${esc(o.shop)}</span>` : ""}</button>`).join("")}</div></div>` : ""}
+    ${pre ? "" : `<div class="field qfind"><label for="qFind">Korábbi tétel ismét</label><input class="inp" id="qFind" type="search" autocomplete="off" placeholder="Keresés a korábbi tételek között… (pl. csoki)"><div id="qFindL" class="qfindl" hidden></div></div>`}
     <div class="field"><label for="qT">Mit, mennyiért, hol? <span class="muted small">(több tétel: + vagy Shift+Enter)</span></label><textarea class="inp" id="qT" rows="1" autocomplete="off" autofocus placeholder="1500 Hell ALDI" enterkeyhint="done" style="resize:none;overflow:hidden;line-height:1.4"></textarea></div>
     <div class="two"><div class="field" id="qScF"><label for="qSc">Kategória</label><select class="inp" id="qSc">${scOptions("egyeb.egyeb")}</select></div>
       <div class="field"><label for="qShop">Bolt</label><input class="inp" id="qShop" autocomplete="off" placeholder="nem kötelező"></div></div>
@@ -1577,7 +1597,7 @@ function openQuick(pre){
   };
   const fill = o => {   // előtöltés (Ismét / Gyakori): a szöveg, a bolt, a kategória és a fizetés a korábbi költésből
     const t = $("#qT"); if (!t) return;
-    t.value = quickTextOf(o.name, o.amt, o.cur);
+    t.value = o.qtyForm ? `1x${o.cur === "HUF" ? fmtN(o.unit, 0).replace(/\s/g, "") : fmtN(o.unit, 2) + " " + curSym(o.cur)} ${o.name}` : quickTextOf(o.name, o.amt, o.cur);
     $("#qShop").value = o.shop || ""; st.shopManual = true;
     if (o.sc && SUBS[o.sc]) { $("#qSc").value = o.sc; st.sc = o.sc; st.scManual = true; }
     if (o.pay) { st.pay = o.pay; document.querySelectorAll("#qPay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === "pay:" + o.pay)); }
@@ -1589,9 +1609,24 @@ function openQuick(pre){
     t.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); DR.handler("save"); } }, true);
     $("#qSc").addEventListener("change", e => { st.sc = e.target.value; st.scManual = true; });
     $("#qShop").addEventListener("input", () => { st.shopManual = true; DR.refresh(); });
-    if (pre) fill(pre); }, 0);
+    if (pre) fill(pre);
+    const fi = $("#qFind"), fl = $("#qFindL");
+    if (fi) {
+      const all = itemIndex();
+      const show = () => {
+        const q = fold(fi.value);
+        found = (q ? all.filter(o => fold(o.name).includes(q) || fold(o.shop).includes(q)) : all)
+          .sort((a, b) => (q && fold(b.name).startsWith(q)) - (q && fold(a.name).startsWith(q)) || b.n - a.n || b.last.localeCompare(a.last)).slice(0, 8);
+        fl.innerHTML = found.length ? found.map((o, i) => `<button type="button" data-dr="pick:${i}"><span class="nm">${esc(o.name)}</span><span class="muted small">${o.cur === "HUF" ? fmt(o.unit) : fmtN(o.unit, 2) + " " + curSym(o.cur)}${o.shop ? " · " + esc(o.shop) : ""} · ${o.n}×</span></button>`).join("") : `<div class="muted small" style="padding:8px 10px">Nincs ilyen korábbi tétel.</div>`;
+        fl.hidden = false;
+      };
+      fi.addEventListener("input", show); fi.addEventListener("focus", show);
+      fi.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== fi) fl.hidden = true; }, 200));
+      fl.addEventListener("pointerdown", e => e.preventDefault());   // a koppintás ne vegye el a fókuszt, mielőtt a választás megtörténik
+    }
+  }, 0);
   DR.handler = async (what) => {
-    if (what.startsWith("fav:")) { const o = favs[+what.slice(4)]; if (o) fill(o); return; }
+    if (what.startsWith("pick:")) { const o = found[+what.slice(5)]; if (o) { $("#qFind").value = ""; $("#qFindL").hidden = true; fill({ ...o, qtyForm: true }); } return; }
     if (what.startsWith("pay:")) { st.pay = what.slice(4); document.querySelectorAll("#qPay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); return; }
     if (what !== "save" || st.saving) return;           // a háttérben futó AI nem tartja vissza a mentést
     st.aiFor = $("#qT").value;
@@ -1660,20 +1695,16 @@ function openReceipt(){
   const body = () => `
     <p class="muted small" style="margin:0">Hosszú blokkot több részletben fotózz, kicsit átfedve. Feltölthetsz képet vagy PDF-et is (pl. webshop-számla). Egy vásárlás = egy feldolgozás.</p>
     <div class="actions" style="justify-content:flex-start"><button class="btn primary" data-dr="cam">${ICON.camera} Fotó</button><button class="btn" data-dr="up">${ICON.upload} Kép / PDF</button></div>
-    <details class="txtrc" ${LS.get("rcTxtOpen", false) ? "open" : ""}><summary><b>Blokk szövegként</b> <span class="muted small">– másik AI-ból (ChatGPT, Gemini, Claude…)</span></summary>
-      <ol class="muted small" style="margin:8px 0;padding-left:20px"><li>Másold ki a promptot.</li><li>Add be a blokk képével együtt bármelyik AI-nak.</li><li>A teljes válaszát illeszd be ide, és nyomd meg a Feldolgozást.</li></ol>
-      <div class="actions" style="justify-content:flex-start;margin-bottom:8px"><button class="btn sm" type="button" data-dr="copyprompt">Prompt másolása</button><button class="btn sm" type="button" data-dr="copyprompt:perm" title="Saját GPT, Gemini Gem vagy Claude-projekt utasításának: utána elég csak a képet feltölteni">Állandó prompt másolása</button></div>
-      <p class="muted small" style="margin:0 0 8px">Az állandó prompt saját GPT-hez, Gemini Gemhez vagy Claude-projekthez való: egyszer beállítod, utána ott elég a képet feltölteni. Ha új kategória kerül a programba, másold ki és cseréld le újra.</p>
-      <textarea class="inp" id="rcTxt" rows="6" placeholder="###BLOKK###&#10;BOLT: ALDI&#10;DATUM: …&#10;…&#10;###VEGE###" style="font-family:var(--mono,monospace);font-size:13px"></textarea>
+    <div class="actions" style="justify-content:flex-start"><button class="btn" type="button" data-dr="paste">${ICON.check} Beillesztés szövegből</button></div>
+    <div id="rcTxtBox" hidden style="display:grid;gap:8px"><textarea class="inp" id="rcTxt" rows="6" placeholder="Illeszd be ide az AI válaszát (Ctrl+V)" style="font-family:var(--mono,monospace);font-size:13px"></textarea>
       <div class="actions"><button class="btn primary" type="button" data-dr="txtgo">${ICON.check} Feldolgozás</button></div>
-    </details>`;
+      <span class="muted small">A hozzá való prompt: Beállítások → Blokk szövegből.</span></div>`;
   const dyn = () => `
     ${RC.files.length ? `<div class="thumbs">${RC.files.map((f, i) => `<div class="th">${f.kind === "img" ? `<img src="${f.url}" alt="${i + 1}. rész">` : `<div class="pdf">PDF<span>${esc(f.name.slice(0, 18))}</span></div>`}<span class="n">${i + 1}</span><button class="icon-btn" data-dr="rmf:${i}" aria-label="${i + 1}. rész törlése">${ICON.close}</button></div>`).join("")}</div>` : `<div class="empty small">Még nincs kép.</div>`}
     ${RC.files.length && RC.files.every(f => f.kind === "img") ? `<button class="btn" data-dr="cam">${ICON.plus} Következő rész fotózása</button>` : ""}
     <div class="actions">${RC.busy ? `<span class="muted"><span class="spin"></span> Feldolgozás… <span id="rcT">0</span> mp<br><span class="small" id="rcI">${esc(GEMST.info)}</span><br><span class="small">Ne zárd le a képernyőt, és maradj az oldalon.</span></span>` : `<button class="btn primary" data-dr="go" ${RC.files.length ? "" : "disabled"}>${ICON.check} Feldolgozás${gemKey() ? "" : " (nincs kulcs)"}</button><button class="btn ghost" data-dr="manual">Kézi kitöltés</button>`}</div>
     ${gemKey() ? "" : `<p class="muted small" style="margin:0">A felismeréshez add meg a Gemini API-kulcsot a Beállításokban. Kulcs nélkül kézzel töltheted ki, a képek így is mentődnek.</p>`}`;
   openDrawer(() => "Blokk beolvasása", body, dyn);
-  setTimeout(() => { const d = document.querySelector("details.txtrc"); if (d) d.addEventListener("toggle", () => LS.set("rcTxtOpen", d.open)); }, 0);
   const add = async list => {
     for (const f of list) { try { RC.files.push(await prepFile(f)); } catch (x) { toast(x.message); } }
     DR.guard = RC.files.length > 0;
@@ -1685,10 +1716,10 @@ function openReceipt(){
     if (what === "up") return add(await pickFiles("#upIn"));
     if (what.startsWith("rmf:")) { RC.files.splice(+what.slice(4), 1); return DR.refresh(); }
     if (what === "manual") return openSpendEdit(null, { files: RC.files, d: today(), lines: [{ n: "", a: null, sc: "etk.elel" }] });
-    if (what.startsWith("copyprompt")) {
-      const perm = what.endsWith(":perm"), p = textReceiptPrompt(perm);
-      try { await navigator.clipboard.writeText(p); toast(perm ? "Az állandó prompt a vágólapon. Illeszd be a saját GPT / Gem / projekt utasításai közé." : "A prompt a vágólapon. Add be a képpel együtt az AI-nak."); }
-      catch (x) { const ta = $("#rcTxt"); ta.value = p; ta.focus(); ta.select(); toast("A vágólap nem érhető el: a prompt a mezőben van, másold ki (Ctrl+C), majd töröld."); }
+    if (what === "paste") {
+      const box = $("#rcTxtBox"), ta = $("#rcTxt"); box.hidden = false;
+      let txt = ""; try { txt = await navigator.clipboard.readText(); } catch (x) { }
+      if (txt) ta.value = txt; else { ta.focus(); toast("Illeszd be a választ a mezőbe (Ctrl+V vagy hosszan nyomva: Beillesztés)."); }
       return;
     }
     if (what === "txtgo") {
@@ -2677,6 +2708,10 @@ function renderSettings(){
     <label class="toggle"><input type="checkbox" data-f="set|keepPhotos" ${st.keepPhotos === false ? "" : "checked"}> Blokkfotók mentése a OneDrive-ra <span class="muted small">(${esc(st.folder || "Budget")}/blokkok/)</span></label>
     <span class="muted small">A kulcs a ${FILE} fájlban tárolódik, így minden eszközödön működik. Az AI Studio projekthez ne kapcsolj számlázást: így legfeljebb az ingyenes keret fogy el. Az ingyenes szinten a Google a beküldött képeket a szolgáltatás fejlesztésére használhatja.</span>
   </div></div>
+  <div class="card"><div class="hd"><h2>Blokk szövegből (bármely AI)</h2></div><div class="bd">
+    <span class="muted small">Másold ki a promptot, add be a blokk képével együtt bármelyik AI-nak (ChatGPT, Gemini, Claude…), a válaszát pedig a Blokk ablakban a „Beillesztés szövegből” gombbal hozd át. Az állandó prompt saját GPT-hez, Gemini Gemhez vagy Claude-projekthez való: ott utána elég a képet feltölteni. Új kategória után másold ki újra.</span>
+    <div class="actions" style="justify-content:flex-start"><button class="btn" data-act="rcprompt">Prompt másolása</button><button class="btn" data-act="rcpromptperm">Állandó prompt másolása</button></div>
+  </div></div>
   <div class="card"><div class="hd"><h2>Adatok és megjelenés</h2></div><div class="bd">
     <div class="actions"><button class="btn" data-act="expJson">JSON-mentés letöltése</button><button class="btn" data-act="expCsv">CSV (Excelhez)</button><button class="btn" data-act="impJson">Betöltés JSON-ból…</button></div>
     <div class="field"><label>Téma</label><div class="seg">${[["auto","Automatikus"],["light","Világos"],["dark","Sötét"]].map(([k, n]) => `<button data-act="theme" data-v="${k}" aria-pressed="${theme === k}">${n}</button>`).join("")}</div></div>
@@ -2701,6 +2736,7 @@ $("#view-settings").addEventListener("click", async e => {
       toast(`Rendben. EUR/HUF ${fmtN(px.EUR, 2)}, USD/HUF ${fmtN(px.USD, 2)}${s ? `, ${s} $${fmtN(px.stock[s], 2)}` : ""}.`); }
     catch (x) { toast("Twelve Data: " + (x.message === "Failed to fetch" ? "a böngésző nem érte el (hálózat vagy blokkoló)" : x.message)); }
     a.disabled = false; return; }
+  if (act === "rcprompt" || act === "rcpromptperm") return copyRcPrompt(act === "rcpromptperm");
   if (act === "gemtest") { a.disabled = true; try { const l = await gemModels(true); toast(l.length ? "Rendben. Modell: " + ((D().settings.gemModel || "").trim() || l[0]) : "A kulcs jó, de nincs Flash modell."); } catch (x) { toast(x.message); } a.disabled = false; return; }
   if (act === "toLocal") return pickDir();
   if (act === "toGraph") return connectGraph();
