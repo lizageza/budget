@@ -456,7 +456,7 @@ const SEED = {"app": "budget", "version": 1, "savedAt": null, "settings": {"reka
 <script>
 "use strict";
 /* ================= config ================= */
-const APP_VERSION = "1.3 · 2026.10.30. 18:08";   // a build.py írja be a build idejét
+const APP_VERSION = "1.3 · 2026.11.11. 19:29";   // a build.py írja be a build idejét
 const CLIENT_ID_DEFAULT = "9dc570fe-f641-46ed-93be-5414be4ae0c9";            // Microsoft app (client) ID – a Beállításokban is megadható
 const GRAPH_SCOPES = ["Files.ReadWrite"];
 const FILE = "budget.json";
@@ -923,6 +923,33 @@ function stockPrice(s){ const px = D().assets.px || {}, live = px.stock && px.st
 const priceIsManual = (o, live) => manualWins(o, live);
 /* Tartozás: a megadott egyenleg a „from” hónap törlesztése UTÁN értendő.
    Csökkenti: a későbbi hónapok törlesztő sora, a hitelre jelölt eseti törlesztések. Növeli: a kártyás költés és a díj (napló). */
+/* a kártya összes mozgása most: költés (s), napló-költés (l), díj (f), eseti törlesztés / visszatérítés (x); amt = hatás a tartozásra */
+function debtMoves(dt){
+  const out = [];
+  for (const sp of spends()) if (sp.pay === dt.id && (sp.who || "geza") === "geza") out.push({ key: "s:" + sp.id, t: "s", at: sp.at, u: sp.u, txt: sp.shop || (sp.lines[0] || {}).n || "Költés", amt: spendHuf(sp) });
+  for (const [lid, l] of Object.entries(dt.log || {})) out.push({ key: "l:" + lid, t: l.t === "fee" ? "f" : "l", at: l.at, u: l.at, txt: (l.t === "fee" ? "Díj" : "Költés") + (l.note ? ": " + l.note : ""), amt: +l.amt || 0 });
+  for (const k of monthKeys()) for (const [xid, x] of Object.entries(month(k).extras)) if (x.debt === dt.id) out.push({ key: "x:" + k + "/" + xid, t: "x", k, at: x.at || x.u, u: x.u, txt: x.inc ? "Visszatérítés: " + (x.name || "") : "Eseti törlesztés", amt: -(+(x.a ?? x.p) || 0) });
+  return out;
+}
+/* az egyenleg rögzítésekor beszámított mozgások pillanatképe: így a később módosított vagy törölt tétel különbsége is látszik */
+function debtSnap(dt){ const o = {}; for (const m of debtMoves(dt)) o[m.key] = { a: Math.round(m.amt), t: m.txt }; return o; }
+/* az utolsó egyenleg-megadás óta: új, módosított és törölt tételek */
+function debtPending(dt){
+  const base = dt.baseAt || "", rows = [], moves = debtMoves(dt);
+  if (!dt.snap) {   // régi rögzítés (pillanatkép nélkül): ami az egyenleg megadása után került be
+    for (const m of moves) if ((m.at || "") > base) rows.push({ at: m.at, txt: m.txt, amt: m.amt, t: m.t });
+  } else {
+    const seen = new Set();
+    for (const m of moves) {
+      const p = dt.snap[m.key]; seen.add(m.key);
+      if (!p) rows.push({ at: m.at, txt: m.txt, amt: m.amt, t: m.t });
+      else if (Math.abs(Math.round(m.amt) - p.a) >= 1) rows.push({ at: m.u || m.at, txt: `Módosítva: ${m.txt} (${fmt(Math.abs(p.a), { noUnit: true })} → ${fmt(Math.abs(m.amt), { noUnit: true })})`, amt: m.amt - p.a, t: m.t });
+    }
+    for (const [key, p] of Object.entries(dt.snap)) if (!seen.has(key) && p.a) rows.push({ at: D().deleted[key[0] === "s" ? "spend/" + key.slice(2) : key[0] === "x" ? "months/" + key.slice(2).replace("/", "/extras/") : ""] || "", txt: "Törölve: " + p.t, amt: -p.a, t: key[0] });
+  }
+  rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+  return { rows, sum: rows.reduce((s, r) => s + r.amt, 0) };
+}
 function debtParts(dt){
   const cur = currentMk(), from = dt.from || "2026-02", base = dt.baseAt || "";
   let paid = 0, extra = 0, charge = 0, fee = 0;
@@ -930,10 +957,13 @@ function debtParts(dt){
     if (k > cur) continue;
     const mo = month(k);
     if (k > from && dt.item) { const ln = mo.lines[dt.item]; if (ln) paid += ln.a != null ? +ln.a : (k < cur ? +ln.p || 0 : 0); }
-    if (k >= from) for (const x of Object.values(mo.extras)) if (x.debt === dt.id && (k > from || (x.at || x.u || "") > base)) extra += +(x.a ?? x.p) || 0;
+    if (!dt.snap && k >= from) for (const x of Object.values(mo.extras)) if (x.debt === dt.id && (k > from || (x.at || x.u || "") > base)) extra += +(x.a ?? x.p) || 0;
   }
-  for (const l of Object.values(dt.log || {})) if ((l.at || "") > base) { if (l.t === "fee") fee += +l.amt || 0; else charge += +l.amt || 0; }
-  for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza" && (s.at || "") > base) charge += spendHuf(s);   // kártyával fizetett rögzített költés
+  if (dt.snap) { for (const r of debtPending(dt).rows) { if (r.t === "x") extra -= r.amt; else if (r.t === "f") fee += r.amt; else charge += r.amt; } }
+  else {
+    for (const l of Object.values(dt.log || {})) if ((l.at || "") > base) { if (l.t === "fee") fee += +l.amt || 0; else charge += +l.amt || 0; }
+    for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza" && (s.at || "") > base) charge += spendHuf(s);   // kártyával fizetett rögzített költés
+  }
   const rem = Math.max((+dt.start || 0) - paid - extra + charge + fee, 0);
   return { rem, paid, extra, charge, fee };
 }
@@ -943,17 +973,8 @@ function debtAutoFrom(dt){
   const cur = currentMk(), ln = dt.item && month(cur) ? month(cur).lines[dt.item] : null;
   return ln && (ln.a != null || ln.done) ? cur : mkAdd(cur, -1);
 }
-/* az utolsó egyenleg-megadás óta rögzített mozgások (költés, díj, eseti törlesztés) */
-function debtPending(dt){
-  const base = dt.baseAt || "", rows = [];
-  for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza" && (s.at || "") > base) rows.push({ at: s.at, txt: s.shop || (s.lines[0] || {}).n || "Költés", amt: spendHuf(s) });
-  for (const l of Object.values(dt.log || {})) if ((l.at || "") > base) rows.push({ at: l.at, txt: (l.t === "fee" ? "Díj" : "Költés") + (l.note ? ": " + l.note : ""), amt: +l.amt || 0 });
-  for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.debt === dt.id && (x.at || x.u || "") > base) rows.push({ at: x.at || x.u, txt: x.inc ? "Visszatérítés: " + (x.name || "") : "Eseti törlesztés", amt: -(+(x.a ?? x.p) || 0) });
-  rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
-  return { rows, sum: rows.reduce((s, r) => s + r.amt, 0) };
-}
 /* új egyenleg rögzítése: a megadott (vagy a számított) tartozás lesz a kiinduló, a függő tételek beszámítva */
-function debtSetBalance(dt, v){ dt.start = Math.max(0, Math.round(v)); dt.baseAt = nowIso(); dt.from = debtAutoFrom(dt); stamp(dt); }
+function debtSetBalance(dt, v){ dt.start = Math.max(0, Math.round(v)); dt.baseAt = nowIso(); dt.from = debtAutoFrom(dt); dt.snap = debtSnap(dt); stamp(dt); }
 function debtForecast(dt){
   const rem = debtRemaining(dt); if (!rem) return { rem, end: null, monthly: 0 };
   const cur = currentMk(), nx = month(mkAdd(cur, 1)), cl = month(cur) && dt.item ? month(cur).lines[dt.item] : null;
@@ -1224,6 +1245,115 @@ async function gemCall(parts, schema, opt){
 const CAT_HELP = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s, n]) => `${g.id}.${s} = ${g.name} / ${n}`)).join("\n");
 const CAT_ENUM = () => TAX.filter(g => !g.ns).flatMap(g => g.subs.map(([s]) => g.id + "." + s));
 const CAT_RULES = `Category rules: chips, crisps, salty snacks, soft drinks (cola, Pepsi, Sprite, Fanta), energy drinks (Hell, Monster, Red Bull), chocolate, candy, ice cream, biscuits/cookies, pastries and desserts, and all alcoholic drinks (beer, wine, spirits, sparkling wine) => etk.nasi. Fast-food chains and snack bars (Burger King, McDonald's, KFC, Subway, gyros, kebab, hot dog, büfé) => etk.gyors; sit-down restaurants, cafés, patisseries and food delivery => etk.ett. Coffee, tea, bread, dairy, meat, vegetables, fruit, mineral water, juice-free basics => etk.elel. Cleaning and personal hygiene products => haz.drog. Bottle deposit (betétdíj, visszaváltási díj, DRS) => the same category as the drink it belongs to (usually etk.nasi). Fuel => koz.uza. Car parts, car service, repair, tyres, oil change, technical inspection, car accessories (e.g. lambda sensor, brake pads, filters, spark plugs, wiper blades, car battery) => koz.auto. Car wash and car care => koz.mosas. Parking, motorway vignette, road toll => koz.park. Car insurance (KGFB, casco) => koz.bizt. Vehicle tax => koz.ado. Medicine, pharmacy => eg.gyogy. Bank transfer fees, account maintenance fees, cash withdrawal fees => bank.utal; card fees and interest => bank.kartya. Use egyeb.egyeb only if nothing fits.`;
+/* ================= blokk szövegből (bármely külső AI válasza, a program AI nélkül értelmezi) ================= */
+/* perm = állandó használatra (saját GPT, Gem, Claude-projekt): nincs benne a napi dátum, és minden új kép új blokk */
+function textReceiptPrompt(perm){
+  return `${perm ? "You are a receipt reader. Every image or PDF I send you is a NEW purchase: answer each one with a new block in the format below, even if I send nothing else with it.\n\n" : ""}Read the attached Hungarian shop receipt / invoice / online order confirmation (image, photo or PDF). If there are several images, they are consecutive, possibly overlapping parts of ONE long receipt: list every product line exactly once.
+
+Answer ONLY with the block below. Nothing before it, nothing after it. No markdown, no table, no code block, no explanation.
+
+###BLOKK###
+BOLT: <store or webshop name as printed, e.g. ALDI>
+DATUM: <purchase date as YYYY-MM-DD>
+PENZNEM: <HUF or EUR or USD>
+VEGOSSZEG: <total amount paid, number only>
+TETELEK:
+<product name> | <final amount> | <category code>
+###VEGE###
+
+Rules for the TETELEK lines:
+1. One line per purchased product, in receipt order. Exactly 3 fields separated by " | ". Never use the | character inside a field.
+2. Product name: readable Hungarian name as printed, expand obvious abbreviations, keep brand and size (e.g. "Hell energiaital 250ml"). Do not put the price or quantity in the name.
+3. Final amount: what was actually paid for that product line = quantity × unit price, minus every discount that belongs to it. Number only: no currency, no thousands separator, no spaces. Use a decimal comma only for cents/fillér (e.g. 1497, -50, 12,90).
+4. Discounts (KEDVEZMÉNY, kedv., akció, kupon, engedmény, -20% etc.) are NOT separate lines. Subtract each discount from the product it belongs to (usually printed right after it). A discount for the whole receipt (coupon, loyalty discount) is distributed proportionally over the products.
+5. Bottle deposit (betétdíj, visszaváltási díj, DRS) IS a separate line with a positive amount. A deposit refund (visszaváltás, göngyöleg visszavét) is a separate line with a negative amount.
+6. Leave out: VAT/ÁFA summary, subtotal, payment method, card data, change (visszajáró), NAV/AP codes, loyalty points, cashier, address.
+7. The sum of all final amounts MUST equal VEGOSSZEG. Add them up and check before answering; if they differ, re-read the receipt.
+8. Category code: exactly one code from the list below (only the code, e.g. etk.nasi). If unsure, write egyeb.egyeb.
+
+DATUM: ${perm ? "use the current date as reference" : `today is ${today()}`}; the purchase is almost always within the last few weeks. Hungarian receipts print dates like 2026.10.10. or 26.10.10 – read the year carefully. If the date is unreadable, leave DATUM empty.
+
+Category codes:
+${CAT_HELP()}
+
+${CAT_RULES}
+
+Example of a correct answer (format only – never copy its values):
+###BLOKK###
+BOLT: ALDI
+DATUM: 2026-01-15
+PENZNEM: HUF
+VEGOSSZEG: 2765
+TETELEK:
+Cappy limonádé 1,25l | 1497 | etk.nasi
+Betétdíj | 150 | etk.nasi
+Bio tojás 10 db | 559 | etk.elel
+Zöldhagyma | 399 | etk.elel
+Kifli (akciós) | 160 | etk.elel
+###VEGE###`;
+}
+/* szám a blokkról: „1497”, „1 497”, „1.497”, „12,90”, „-50”, „50-”, „1497 Ft” */
+function parseRcNum(raw, cur){
+  let s = String(raw || "").replace(/\u00a0|\u202f/g, " ").trim();
+  if (!/\d/.test(s)) return NaN;
+  const neg = /^[-−–]|[-−–]$/.test(s.replace(/\s*(ft|huf|eur|usd|€|\$)\s*$/i, "").trim());
+  s = s.replace(/[^\d,.]/g, "");
+  const lc = s.lastIndexOf(","), ld = s.lastIndexOf(".");
+  if (lc >= 0 && ld >= 0) { const dec = Math.max(lc, ld); s = s.slice(0, dec).replace(/[.,]/g, "") + "." + s.slice(dec + 1); }
+  else if (lc >= 0 || ld >= 0) {
+    const p = Math.max(lc, ld), after = s.length - p - 1, many = (s.match(/[.,]/g) || []).length > 1;
+    if (many || (after === 3 && cur === "HUF")) s = s.replace(/[.,]/g, "");   // ezres elválasztó
+    else s = s.replace(",", ".");
+  }
+  const v = parseFloat(s); return isNaN(v) ? NaN : (neg ? -v : v);
+}
+function parseRcDate(s){
+  s = String(s || "").trim();
+  let m = s.match(/(\d{4})\s*[-.\/]\s*(\d{1,2})\s*[-.\/]\s*(\d{1,2})/); if (m) return `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
+  m = s.match(/(\d{1,2})\s*[.\/]\s*(\d{1,2})\s*[.\/]\s*(\d{4})/); if (m) return `${m[3]}-${pad(+m[2])}-${pad(+m[1])}`;
+  m = s.match(/^(\d{2})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{1,2})/); if (m) return `20${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
+  return "";
+}
+/* a külső AI válaszának értelmezése; elviseli a markdown-táblát, kódblokkot, felsorolásjelet, csillagokat */
+function parseTextReceipt(txt){
+  let t = String(txt || "").replace(/\r/g, "");
+  const a = t.search(/#{2,}\s*BLOKK\s*#{2,}/i), b = t.search(/#{2,}\s*V[EÉ]GE\s*#{2,}/i);
+  if (a >= 0) t = t.slice(a).replace(/^#{2,}\s*BLOKK\s*#{2,}/i, "");
+  if (b >= 0) t = t.slice(0, t.search(/#{2,}\s*V[EÉ]GE\s*#{2,}/i));
+  const r = { shop: "", date: "", cur: "HUF", total: null, lines: [], bad: [] };
+  const codeOf = c => { c = String(c || "").trim().replace(/[`*"]/g, ""); if (SUBS[c]) return c; const f = fold(c); if (!f) return null;
+    for (const [k, o] of Object.entries(SUBS)) if (fold(o.name) === f || fold(o.gname + " " + o.name) === f) return k; return null; };
+  const rows = [];
+  for (let line of t.split("\n")) {
+    line = line.replace(/\*\*|__|`/g, "").trim();
+    if (!line || /^```/.test(line) || /^[|\s:\-–=+]+$/.test(line)) continue;
+    line = line.replace(/^([-*•·]|\d+[.)])\s+/, "");
+    const kv = line.match(/^([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű ]{3,20})\s*:\s*(.*)$/);
+    if (kv && !line.includes("|")) {
+      const k = fold(kv[1]).replace(/\s/g, ""), v = kv[2].trim();
+      if (/^(bolt|shop|store|uzlet|ceg)$/.test(k)) r.shop = v;
+      else if (/^(datum|date|vasarlasdatuma)$/.test(k)) r.date = parseRcDate(v);
+      else if (/^(penznem|currency|valuta)$/.test(k)) { const f = fold(v); r.cur = /eur|€/.test(f + v) ? "EUR" : /usd|\$/.test(f + v) ? "USD" : "HUF"; }
+      else if (/^(vegosszeg|osszesen|total|fizetendo|osszeg)$/.test(k)) r.total = parseRcNum(v, r.cur);
+      continue;
+    }
+    if (/^tetelek\s*:?$/i.test(fold(line))) continue;
+    rows.push(line);
+  }
+  for (const line of rows) {
+    const cols = (line.includes("|") ? line.replace(/^\||\|$/g, "").split("|") : line.includes("\t") ? line.split("\t") : line.split(";")).map(c => c.trim());
+    if (cols.length < 2) { r.bad.push(line); continue; }
+    if (/^(termek|tetel|nev|megnevezes|item|name|product)/.test(fold(cols[0]))) continue;   // táblázat fejléce
+    let ci = -1; for (let i = cols.length - 1; i >= 1; i--) if (codeOf(cols[i])) { ci = i; break; }
+    let ai = -1; for (let i = cols.length - 1; i >= 1; i--) if (i !== ci && !isNaN(parseRcNum(cols[i], r.cur))) { ai = i; break; }
+    const name = cols[0], amt = ai >= 0 ? parseRcNum(cols[ai], r.cur) : NaN;
+    if (!name || isNaN(amt)) { r.bad.push(line); continue; }
+    const code = ci >= 0 ? codeOf(cols[ci]) : null;
+    r.lines.push({ n: name, a: Math.round(amt * 100) / 100, sc: guessScLearned(name) || code || guessSc(name) || "egyeb.egyeb" });
+  }
+  r.lines = mergeDiscounts(r.lines);
+  return r;
+}
 function receiptSchema(){
   return { type: "OBJECT", properties: {
     shop: { type: "STRING" }, date: { type: "STRING", description: "YYYY-MM-DD or empty" },
@@ -1301,7 +1431,9 @@ function parseQuick(txt){
   }
   const nums = [...s.matchAll(NUM_RE)];
   if (!nums.length) return { amt: null, cur, name: cleanName(s) };
-  const pick = nums.reduce((best, m) => toNum(m[0]) > toNum(best[0]) ? m : best);   // több szám közül a legnagyobb az ár
+  const curMark = m => /^\s*(ft\b|huf\b|forint|€|eur|\$|usd)/i.test(s.slice(m.index + m[0].length));
+  const marked = nums.filter(curMark);
+  const pick = (marked.length ? marked : nums).reduce((best, m) => toNum(m[0]) > toNum(best[0]) ? m : best);   // pénznemmel jelölt szám az ár, különben a legnagyobb
   const name = cleanName(s.slice(0, pick.index) + " " + s.slice(pick.index + pick[0].length));
   return { amt: toNum(pick[0]), cur, name };
 }
@@ -1355,8 +1487,34 @@ function pickFiles(inputId){
 }
 
 /* ================= gyors bevitel drawer ================= */
-function openQuick(){
-  const st = { txt: "", e: null, sc: null, scManual: false, shopManual: false, aiShop: "", pay: LS.get("lastPay", "rev"), d: today(), busy: false, aiFor: "" };
+/* egy korábbi egytételes költésből a gyors bevitel szövege (a „(3 × 499)” utótag visszaalakítva) */
+function quickTextOf(name, amt, cur){
+  const mq = String(name || "").match(/\s*\((\d+(?:[.,]\d+)?)\s*×\s*([\d\s.,]+)\)\s*$/);
+  if (mq) return `${mq[1]}x${mq[2].trim()} ${name.slice(0, mq.index).trim()}`;
+  return `${cur === "HUF" ? fmtN(amt, 0).replace(/\s/g, "") + " Ft" : fmtN(amt, 2) + " " + curSym(cur)} ${name || ""}`.trim();
+}
+/* gyakori egytételes költések az elmúlt 90 napból (név + összeg + pénznem); legalább kétszer */
+function quickFavs(n){
+  const dd = new Date(Date.now() - 90 * 864e5), from = `${dd.getFullYear()}-${pad(dd.getMonth() + 1)}-${pad(dd.getDate())}`, m = {};
+  for (const s of spends()) {
+    if ((s.who || "geza") !== "geza" || (s.lines || []).length !== 1 || (s.d || "") < from) continue;
+    const l = s.lines[0]; if (!l.n || l.a == null) continue;
+    const key = fold(l.n) + "|" + l.a + "|" + (s.cur || "HUF");
+    const o = m[key] = m[key] || { n: 0, last: "", name: l.n, amt: +l.a, cur: s.cur || "HUF" };
+    o.n++; if ((s.d || "") + (s.at || "") >= o.last) { o.last = (s.d || "") + (s.at || ""); o.shop = s.shop || ""; o.sc = l.sc; o.pay = s.pay; }
+  }
+  return Object.values(m).filter(o => o.n >= 2).sort((a, b) => b.n - a.n || b.last.localeCompare(a.last)).slice(0, n);
+}
+/* „Ismét”: egy korábbi költés újra, mai dátummal, minden átírható; az eredeti nem változik */
+function repeatSpend(sid){
+  const s = D().spend[sid]; if (!s) return;
+  const L = s.lines || [];
+  if (L.length === 1) return openQuick({ name: L[0].n, amt: +L[0].a, cur: s.cur || "HUF", shop: s.shop || "", sc: L[0].sc, pay: s.pay, who: s.who || "geza" });
+  openSpendEdit(null, { d: today(), who: s.who || "geza", pay: s.pay, cur: s.cur || "HUF", shop: s.shop || "", total: s.total ?? null, note: s.note || "", lines: L.map(l => ({ n: l.n, a: l.a, sc: l.sc })), src: "quick" });
+}
+function openQuick(pre){
+  const st = { txt: "", e: null, sc: null, scManual: false, shopManual: false, aiShop: "", pay: (pre && pre.pay) || LS.get("lastPay", "rev"), d: today(), busy: false, aiFor: "" };
+  const favs = pre ? [] : quickFavs(6);
   const money = (v, cur) => cur === "HUF" ? fmt(v) : fmtN(v, 2) + " " + curSym(cur);
   const preview = () => {
     const e = st.e;
@@ -1375,7 +1533,9 @@ function openQuick(){
       ${bad ? `<span class="warnline">${ICON.warn} Eltérés: ${money(sum - e.total, e.cur)}</span>` : ""}</div>
       <p class="muted small" style="margin:0">A következő lépésben soronként átnézheted a kategóriákat, és ott mentesz.${st.busy ? " AI besorolás…" : ""}</p>`;
   };
-  openDrawer(() => "Gyors költés", () => `
+  openDrawer(() => pre ? "Ismét rögzítem" : "Gyors költés", () => `
+    ${pre ? `<p class="muted small" style="margin:0">Egy korábbi költés másolata. Bármit átírhatsz; az eredeti nem változik.</p>` : ""}
+    ${favs.length ? `<div class="field"><label>Gyakori</label><div class="chips" style="display:flex;flex-wrap:wrap;gap:6px">${favs.map((o, i) => `<button class="chipbtn" type="button" data-dr="fav:${i}" title="${esc(o.n + "× az elmúlt 90 napban")}">${esc(o.name)} <b>${o.cur === "HUF" ? fmt(o.amt, { noUnit: true }) : fmtN(o.amt, 2) + " " + curSym(o.cur)}</b>${o.shop ? ` <span class="muted">· ${esc(o.shop)}</span>` : ""}</button>`).join("")}</div></div>` : ""}
     <div class="field"><label for="qT">Mit, mennyiért, hol? <span class="muted small">(több tétel: + vagy Shift+Enter)</span></label><textarea class="inp" id="qT" rows="1" autocomplete="off" autofocus placeholder="1500 Hell ALDI" enterkeyhint="done" style="resize:none;overflow:hidden;line-height:1.4"></textarea></div>
     <div class="two"><div class="field" id="qScF"><label for="qSc">Kategória</label><select class="inp" id="qSc">${scOptions("egyeb.egyeb")}</select></div>
       <div class="field"><label for="qShop">Bolt</label><input class="inp" id="qShop" autocomplete="off" placeholder="nem kötelező"></div></div>
@@ -1415,11 +1575,23 @@ function openQuick(){
     } catch (x) { if (!x.nokey) toast(x.message); }
     finally { st.busy = false; if (DR.open) DR.refresh(); }
   };
+  const fill = o => {   // előtöltés (Ismét / Gyakori): a szöveg, a bolt, a kategória és a fizetés a korábbi költésből
+    const t = $("#qT"); if (!t) return;
+    t.value = quickTextOf(o.name, o.amt, o.cur);
+    $("#qShop").value = o.shop || ""; st.shopManual = true;
+    if (o.sc && SUBS[o.sc]) { $("#qSc").value = o.sc; st.sc = o.sc; st.scManual = true; }
+    if (o.pay) { st.pay = o.pay; document.querySelectorAll("#qPay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === "pay:" + o.pay)); }
+    if (o.who) $("#qW").value = o.who;
+    st.aiFor = t.value;   // a háttér-AI ne írja felül
+    upd(); t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+  };
   setTimeout(() => { const t = $("#qT"); if (!t) return; t.addEventListener("input", upd); t.focus();
     t.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); DR.handler("save"); } }, true);
     $("#qSc").addEventListener("change", e => { st.sc = e.target.value; st.scManual = true; });
-    $("#qShop").addEventListener("input", () => { st.shopManual = true; DR.refresh(); }); }, 0);
+    $("#qShop").addEventListener("input", () => { st.shopManual = true; DR.refresh(); });
+    if (pre) fill(pre); }, 0);
   DR.handler = async (what) => {
+    if (what.startsWith("fav:")) { const o = favs[+what.slice(4)]; if (o) fill(o); return; }
     if (what.startsWith("pay:")) { st.pay = what.slice(4); document.querySelectorAll("#qPay button").forEach(b => b.setAttribute("aria-pressed", b.dataset.dr === what)); return; }
     if (what !== "save" || st.saving) return;           // a háttérben futó AI nem tartja vissza a mentést
     st.aiFor = $("#qT").value;
@@ -1487,13 +1659,21 @@ function openReceipt(){
   RC.files = []; RC.busy = false;
   const body = () => `
     <p class="muted small" style="margin:0">Hosszú blokkot több részletben fotózz, kicsit átfedve. Feltölthetsz képet vagy PDF-et is (pl. webshop-számla). Egy vásárlás = egy feldolgozás.</p>
-    <div class="actions" style="justify-content:flex-start"><button class="btn primary" data-dr="cam">${ICON.camera} Fotó</button><button class="btn" data-dr="up">${ICON.upload} Kép / PDF</button></div>`;
+    <div class="actions" style="justify-content:flex-start"><button class="btn primary" data-dr="cam">${ICON.camera} Fotó</button><button class="btn" data-dr="up">${ICON.upload} Kép / PDF</button></div>
+    <details class="txtrc" ${LS.get("rcTxtOpen", false) ? "open" : ""}><summary><b>Blokk szövegként</b> <span class="muted small">– másik AI-ból (ChatGPT, Gemini, Claude…)</span></summary>
+      <ol class="muted small" style="margin:8px 0;padding-left:20px"><li>Másold ki a promptot.</li><li>Add be a blokk képével együtt bármelyik AI-nak.</li><li>A teljes válaszát illeszd be ide, és nyomd meg a Feldolgozást.</li></ol>
+      <div class="actions" style="justify-content:flex-start;margin-bottom:8px"><button class="btn sm" type="button" data-dr="copyprompt">Prompt másolása</button><button class="btn sm" type="button" data-dr="copyprompt:perm" title="Saját GPT, Gemini Gem vagy Claude-projekt utasításának: utána elég csak a képet feltölteni">Állandó prompt másolása</button></div>
+      <p class="muted small" style="margin:0 0 8px">Az állandó prompt saját GPT-hez, Gemini Gemhez vagy Claude-projekthez való: egyszer beállítod, utána ott elég a képet feltölteni. Ha új kategória kerül a programba, másold ki és cseréld le újra.</p>
+      <textarea class="inp" id="rcTxt" rows="6" placeholder="###BLOKK###&#10;BOLT: ALDI&#10;DATUM: …&#10;…&#10;###VEGE###" style="font-family:var(--mono,monospace);font-size:13px"></textarea>
+      <div class="actions"><button class="btn primary" type="button" data-dr="txtgo">${ICON.check} Feldolgozás</button></div>
+    </details>`;
   const dyn = () => `
     ${RC.files.length ? `<div class="thumbs">${RC.files.map((f, i) => `<div class="th">${f.kind === "img" ? `<img src="${f.url}" alt="${i + 1}. rész">` : `<div class="pdf">PDF<span>${esc(f.name.slice(0, 18))}</span></div>`}<span class="n">${i + 1}</span><button class="icon-btn" data-dr="rmf:${i}" aria-label="${i + 1}. rész törlése">${ICON.close}</button></div>`).join("")}</div>` : `<div class="empty small">Még nincs kép.</div>`}
     ${RC.files.length && RC.files.every(f => f.kind === "img") ? `<button class="btn" data-dr="cam">${ICON.plus} Következő rész fotózása</button>` : ""}
     <div class="actions">${RC.busy ? `<span class="muted"><span class="spin"></span> Feldolgozás… <span id="rcT">0</span> mp<br><span class="small" id="rcI">${esc(GEMST.info)}</span><br><span class="small">Ne zárd le a képernyőt, és maradj az oldalon.</span></span>` : `<button class="btn primary" data-dr="go" ${RC.files.length ? "" : "disabled"}>${ICON.check} Feldolgozás${gemKey() ? "" : " (nincs kulcs)"}</button><button class="btn ghost" data-dr="manual">Kézi kitöltés</button>`}</div>
     ${gemKey() ? "" : `<p class="muted small" style="margin:0">A felismeréshez add meg a Gemini API-kulcsot a Beállításokban. Kulcs nélkül kézzel töltheted ki, a képek így is mentődnek.</p>`}`;
   openDrawer(() => "Blokk beolvasása", body, dyn);
+  setTimeout(() => { const d = document.querySelector("details.txtrc"); if (d) d.addEventListener("toggle", () => LS.set("rcTxtOpen", d.open)); }, 0);
   const add = async list => {
     for (const f of list) { try { RC.files.push(await prepFile(f)); } catch (x) { toast(x.message); } }
     DR.guard = RC.files.length > 0;
@@ -1505,6 +1685,20 @@ function openReceipt(){
     if (what === "up") return add(await pickFiles("#upIn"));
     if (what.startsWith("rmf:")) { RC.files.splice(+what.slice(4), 1); return DR.refresh(); }
     if (what === "manual") return openSpendEdit(null, { files: RC.files, d: today(), lines: [{ n: "", a: null, sc: "etk.elel" }] });
+    if (what.startsWith("copyprompt")) {
+      const perm = what.endsWith(":perm"), p = textReceiptPrompt(perm);
+      try { await navigator.clipboard.writeText(p); toast(perm ? "Az állandó prompt a vágólapon. Illeszd be a saját GPT / Gem / projekt utasításai közé." : "A prompt a vágólapon. Add be a képpel együtt az AI-nak."); }
+      catch (x) { const ta = $("#rcTxt"); ta.value = p; ta.focus(); ta.select(); toast("A vágólap nem érhető el: a prompt a mezőben van, másold ki (Ctrl+C), majd töröld."); }
+      return;
+    }
+    if (what === "txtgo") {
+      const r = parseTextReceipt($("#rcTxt").value);
+      if (!r.lines.length) return toast("Nem találtam tételsort. A válaszban „név | összeg | kód” sorok legyenek.");
+      const lim = new Date(); lim.setDate(lim.getDate() - 60);
+      const okD = /^\d{4}-\d\d-\d\d$/.test(r.date) && r.date <= today() && r.date >= dstr(lim);
+      if (r.bad.length) toast(`${r.bad.length} sort nem tudtam értelmezni, kimaradt: ${r.bad.slice(0, 2).join(" · ").slice(0, 120)}`);
+      return openSpendEdit(null, { files: RC.files, d: okD ? r.date : today(), shop: r.shop, cur: r.cur, total: r.total != null && !isNaN(r.total) ? r.total : null, lines: r.lines, src: "receipt", dateWarn: !okD && r.date ? r.date : null });
+    }
     if (what === "go") {
       RC.busy = true; DR.refresh();
       const t0 = Date.now(), tick = setInterval(() => { const el = $("#rcT"); if (el) el.textContent = Math.round((Date.now() - t0) / 1000); }, 1000);
@@ -1635,7 +1829,7 @@ function spendCard(k){
     ${L.length ? `<ul class="due spl">${L.slice(0, 6).map(s => { const top = (s.lines || []).slice().sort((a, b) => (b.a || 0) - (a.a || 0))[0] || {};
       return `<li data-spend="${esc(s.id)}"><span class="day">${(s.d || "").slice(5).replace("-", ".")}.</span><span class="nm">${esc(s.shop || top.n || "Költés")}${(() => { const L = s.lines || [], cs = {}; for (const l of L) cs[l.sc] = (cs[l.sc] || 0) + (+l.a || 0); const names = Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([sc]) => SUBS[sc] ? SUBS[sc].name : "").filter(Boolean);
         const txt = (L.length > 1 ? L.length + " tétel · " : "") + names.join(", ") + (s.files && s.files.length ? " · fotó" : "");
-        return `<span class="sub one" title="${esc(payName(s.pay) + " · " + txt)}"><span class="chip">${esc(payName(s.pay))}</span> ${esc(txt)}</span>`; })()}</span><span class="amt num">${fmt(spendHuf(s))}</span></li>`; }).join("")}</ul>
+        return `<span class="sub one" title="${esc(payName(s.pay) + " · " + txt)}"><span class="chip">${esc(payName(s.pay))}</span> ${esc(txt)}</span>`; })()}</span><span class="amt num">${fmt(spendHuf(s))}</span><button class="icon-btn" data-rep="${esc(s.id)}" title="Ismét rögzítem (másolat mai dátummal)" aria-label="Ismét rögzítem">⧉</button></li>`; }).join("")}</ul>
       ${L.length > 6 ? `<div class="bd" style="padding-top:0"><button class="btn sm ghost" data-act="gostats">Mind a(z) ${L.length} a Statisztika fülön</button></div>` : ""}` : ""}</div>`;
 }
 
@@ -1771,12 +1965,12 @@ function openDebtEntry(id, type){
 function debtLogHtml(dt){
   const base = dt.baseAt || "";
   const rows = [];
-  for (const [lid, l] of Object.entries(dt.log || {})) rows.push({ at: l.at, txt: `${l.t === "fee" ? "Díj" : "Költés"}${l.note ? ": " + esc(l.note) : ""}`, amt: +l.amt, lid, old: (l.at || "") <= base });
+  for (const [lid, l] of Object.entries(dt.log || {})) rows.push({ at: l.at, txt: `${l.t === "fee" ? "Díj" : "Költés"}${l.note ? ": " + esc(l.note) : ""}`, amt: +l.amt, lid, old: dt.snap ? !!dt.snap["l:" + lid] : (l.at || "") <= base });
   for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.debt === dt.id) rows.push({ at: x.at || x.u, txt: esc(x.name), amt: -(+(x.a ?? x.p) || 0) });
-  for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza") rows.push({ at: s.at, txt: "Költés: " + esc(s.shop || (s.lines[0] || {}).n || ""), amt: spendHuf(s), old: (s.at || "") <= base });
+  for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza") rows.push({ at: s.at, txt: "Költés: " + esc(s.shop || (s.lines[0] || {}).n || ""), amt: spendHuf(s), old: dt.snap ? !!dt.snap["s:" + s.id] : (s.at || "") <= base });
   if (!rows.length) return "";
   rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
-  return `<div><div class="k" style="margin-bottom:6px">Napló</div>${rows.slice(0, 12).map(r => `<div style="display:flex;gap:8px;align-items:center;font-size:13.5px;padding:4px 0;border-top:1px solid var(--line-2);${r.old ? "opacity:.5" : ""}"><span class="muted num" style="font-size:12px">${r.at ? new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" }) : ""}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.txt}</span><span class="num ${r.amt > 0 ? "neg" : "pos"}">${r.amt > 0 ? "+" : "−"}${fmt(Math.abs(r.amt), { noUnit: true })}</span>${r.lid ? `<button class="icon-btn" data-dr="rm:${r.lid}" aria-label="Törlés">${ICON.trash}</button>` : ""}</div>`).join("")}${rows.some(r => r.old) ? `<p class="muted small" style="margin:6px 0 0">A halvány tételek a legutóbb beírt egyenleg előttiek, azokat már nem számolom.</p>` : ""}</div>`;
+  return `<div><div class="k" style="margin-bottom:6px">Napló</div>${rows.slice(0, 12).map(r => `<div style="display:flex;gap:8px;align-items:center;font-size:13.5px;padding:4px 0;border-top:1px solid var(--line-2);${r.old ? "opacity:.5" : ""}"><span class="muted num" style="font-size:12px">${r.at ? new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" }) : ""}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.txt}</span><span class="num ${r.amt > 0 ? "neg" : "pos"}">${r.amt > 0 ? "+" : "−"}${fmt(Math.abs(r.amt), { noUnit: true })}</span>${r.lid ? `<button class="icon-btn" data-dr="rm:${r.lid}" aria-label="Törlés">${ICON.trash}</button>` : ""}</div>`).join("")}${rows.some(r => r.old) ? `<p class="muted small" style="margin:6px 0 0">A halvány tételek már benne vannak a legutóbb rögzített egyenlegben; ha utólag módosítod őket, a különbség függő tételként jelenik meg.</p>` : ""}</div>`;
 }
 function tickerStrip(){
   const A = D().assets, px = A.px || {}, chg = px.chg || {};
@@ -1919,6 +2113,7 @@ $("#view-month").addEventListener("click", e => {
     if (act === "mreopen") { const mo = month(S.mk); mo.meta = stamp({ ...mo.meta, closed: false }); persist(); return renderAll(); }
     return;
   }
+  const rp = e.target.closest("[data-rep]"); if (rp) return repeatSpend(rp.dataset.rep);
   const sp = e.target.closest("[data-spend]"); if (sp) return openSpendEdit(sp.dataset.spend);
   if (e.target.closest(".dcard")) return;
   const r = e.target.closest("[data-line]");
@@ -2101,8 +2296,8 @@ document.addEventListener("change", e => {
   if (parts[0] === "acct") { const v = numv(); if (v === undefined) return; const a = A.accounts[parts[1]]; a.bal = { ...a.bal, [parts[2]]: v }; stamp(a); persist(); return renderAll(); }
   if (parts[0] === "stock" || parts[0] === "crypto" || parts[0] === "debt") {
     const g = { stock: "stocks", crypto: "crypto", debt: "debts" }[parts[0]], o = A[g][parts[1]], fld = parts[2];
-    if (["qty","start","limit"].includes(fld)) { const v = numv(); if (v === undefined) return; if (fld === "limit" && v == null) delete o.limit; else o[fld] = v; if (fld === "start") { o.baseAt = nowIso(); o.from = debtAutoFrom(o); } }
-    else if (fld === "from") { o.from = el.value; o.baseAt = nowIso(); }
+    if (["qty","start","limit"].includes(fld)) { const v = numv(); if (v === undefined) return; if (fld === "limit" && v == null) delete o.limit; else o[fld] = v; if (fld === "start") { o.baseAt = nowIso(); o.from = debtAutoFrom(o); o.snap = debtSnap(o); } }
+    else if (fld === "from") { o.from = el.value; o.baseAt = nowIso(); o.snap = debtSnap(o); }
     else if (fld === "usd") { const v = numv(); if (v === undefined) return; if (v == null) { o.manual = false; } else { o.usd = v; o.manual = true; o.usdAt = nowIso(); } }
     else o[fld] = el.value.trim();
     stamp(o); persist(); return renderAll();
@@ -2592,7 +2787,7 @@ async function boot(){
 boot();
 
 /* ================= statisztika ================= */
-S.sf = S.sf || { per: "cur", from: null, to: null, src: { plan: true, geza: true, reka: true }, ns: false, q: "", g: "", open: {}, sort: "d" };
+S.sf = S.sf || { per: "cur", from: null, to: null, src: { plan: true, geza: true, reka: true }, ns: false, q: "", g: "", pay: "", open: {}, sort: "d", view: LS.get("stView", "blocks") };
 function statMonths(){
   const set = new Set(monthKeys().filter(k => k <= currentMk()));
   for (const s of spends()) set.add(mkOfDate(s.d));
@@ -2626,7 +2821,7 @@ function lineDate(k, due){
 function statRows(){
   const f = S.sf, { from, to, a, b } = statDates(), cur = currentMk(), q = fold(f.q);
   const inR = d => d >= from && d <= to;
-  const rows = [], planInfo = []; let expected = 0;
+  const rows = [], planInfo = [];
   for (const k of monthsIn(a, b)) {
     const mo = month(k);
     if (mo && f.src.plan && k <= cur) {
@@ -2638,8 +2833,7 @@ function statRows(){
         // lezárt időszakban a várható érték számít (kifizetettnek vesszük); a folyó időszakban csak a ténylegesen kifizetett,
         // a nyitott sorok hátralévő része „még várható”
         const p = l.p || 0, paid = k < cur ? expA(l) : (l.a != null ? l.a : (l.done ? p : 0)), rem = k < cur || l.done ? 0 : Math.max(p - (l.a || 0), 0);
-        if (p || paid || rem) planInfo.push({ sc, name: l.name, p, paid, rem });
-        if (!(SUBS[sc] || {}).ns) expected += rem;
+        if (p || paid || rem) planInfo.push({ sc, name: l.name, p, paid, rem, pay: l.rev ? "rev" : "raif" });
         const v = paid; if (!v) continue;
         rows.push({ k, d: null, ld, src: "plan", who: "plan", sc, name: l.name, shop: "", pay: l.rev ? "rev" : "raif", amt: v, kind: l.kind, lid: l.id });
       }
@@ -2657,9 +2851,9 @@ function statRows(){
     const d = (l.at || "").slice(0, 10); if (l.t !== "fee" || !inR(d)) continue;
     rows.push({ k: mkOfDate(d), d, src: "spend", who: "geza", sc: "bank.kartya", name: (l.note || "Kártyadíj") + " (" + dt.name + ")", shop: dt.name, pay: dt.id, amt: +l.amt || 0 });
   }
-  const out = rows.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!f.sc || r.sc === f.sc) && (!q || fold(r.name + " " + r.shop + " " + (r.note || "")).includes(q)));
-  out.expected = (f.g || q) ? 0 : expected;
-  out.plan = planInfo.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.g || groupOf(r.sc) === f.g) && (!f.sc || r.sc === f.sc) && (!q || fold(r.name).includes(q)));
+  const out = rows.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.pay || r.pay === f.pay) && (!f.g || groupOf(r.sc) === f.g) && (!f.sc || r.sc === f.sc) && (!q || fold(r.name + " " + r.shop + " " + (r.note || "")).includes(q)));
+  out.plan = planInfo.filter(r => (f.ns || !(SUBS[r.sc] || {}).ns) && (!f.pay || r.pay === f.pay) && (!f.g || groupOf(r.sc) === f.g) && (!f.sc || r.sc === f.sc) && (!q || fold(r.name).includes(q)));
+  out.expected = q ? 0 : out.plan.filter(r => !(SUBS[r.sc] || {}).ns).reduce((s, r) => s + r.rem, 0);   // a szűrésnek megfelelő „még várható”
   return out;
 }
 /* egyszeri: az Alkohol a „Nasi és ital”-ba olvad; az étterem-sorokból a gyorséttermek külön alkategóriába */
@@ -2731,6 +2925,7 @@ function renderStats(){
     <select class="inp" data-sf="per" aria-label="Időszak">${[["cur",`Aktuális időszak (${dshort(period(cur).start)}–${dshort(period(cur).end)})`],["prev","Előző időszak"],["cal","Aktuális naptári hónap"],["prevcal","Előző naptári hónap"],["3","Utolsó 3 időszak"],["6","Utolsó 6 időszak"],["12","Utolsó 12 időszak"],["year","Idei év"],["all","Teljes időszak"],["custom","Egyedi…"]].map(([k, n]) => `<option value="${k}" ${f.per === k ? "selected" : ""}>${n}</option>`).join("")}</select>
     ${f.per === "custom" ? `<select class="inp" data-sf="from" aria-label="Ettől">${all.map(k => opt(k, a)).join("")}</select><select class="inp" data-sf="to" aria-label="Eddig">${all.map(k => opt(k, b)).join("")}</select>` : ""}
     <select class="inp" data-sf="g" aria-label="Főcsoport"><option value="">Minden csoport</option>${TAX.filter(g => f.ns || !g.ns).map(g => `<option value="${g.id}" ${f.g === g.id ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select>
+    <select class="inp" data-sf="pay" aria-label="Fizetési mód"><option value="">Minden fizetési mód</option>${PAY().map(([k, n]) => `<option value="${esc(k)}" ${f.pay === k ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
     ${f.sc ? `<button class="chipbtn" data-scclear aria-pressed="true" title="Szűrés törlése">${esc(SUBS[f.sc].name)} ✕</button>` : ""}
     <input class="inp grow" type="search" data-sf="q" value="${esc(f.q)}" placeholder="Keresés: tétel, bolt (pl. Hell, Lidl)" aria-label="Keresés">
     <div class="chips">${[["plan","Tervezett tételek"],["geza","Saját költés"],["reka",partner() + " költése"]].map(([k, n]) => `<button class="chipbtn" data-sfsrc="${k}" aria-pressed="${!!f.src[k]}">${esc(n)}</button>`).join("")}
@@ -2779,11 +2974,11 @@ function renderStats(){
   // boltok, tételek, fizetés
   const sp = rows.filter(r => r.src === "spend");
   if (sp.length) {
-    const shops = {}; for (const s of spends()) { if (!inD(s) || !f.src[s.who || "geza"] || !s.shop) continue; const o = shops[s.shop] = shops[s.shop] || { n: 0, v: 0 }; o.n++; o.v += spendHuf(s); }
+    const shops = {}; for (const s of spends()) { if (!inD(s) || !f.src[s.who || "geza"] || !s.shop || (f.pay && s.pay !== f.pay)) continue; const o = shops[s.shop] = shops[s.shop] || { n: 0, v: 0 }; o.n++; o.v += spendHuf(s); }
     h += `<div class="card"><div class="hd"><h2>Boltok</h2></div><div class="tblwrap"><table class="t"><thead><tr><th>Bolt</th><th>Alkalom</th><th>Összeg</th></tr></thead><tbody>${Object.entries(shops).sort((x, y) => y[1].v - x[1].v).slice(0, 10).map(([n, o]) => `<tr><td><a href="#" data-sq="${esc(n)}">${esc(n)}</a></td><td class="num">${o.n}</td><td class="num">${fmt(o.v, { noUnit: true })}</td></tr>`).join("") || `<tr><td colspan="3" class="muted">Nincs bolt megadva.</td></tr>`}</tbody></table></div></div>`;
     h += `<div class="card"><div class="hd"><h2>Leggyakoribb tételek</h2></div><div class="bd">${topTable(sp, "name", 10)}</div></div>`;
     const byPay = sumBy(sp, "pay");
-    h += `<div class="card"><div class="hd"><h2>Fizetési mód</h2><span class="muted small">rögzített költések</span></div><div class="bd">${hbars(Object.entries(byPay).sort((x, y) => y[1] - x[1]).map(([k, val]) => [k, val, payName(k)]), sp.reduce((s, r) => s + r.amt, 0))}</div></div>`;
+    h += `<div class="card"><div class="hd"><h2>Fizetési mód</h2><span class="muted small">rögzített költések · kattints a szűréshez</span></div><div class="bd">${hbars(Object.entries(byPay).sort((x, y) => y[1] - x[1]).map(([k, val]) => ["pay:" + k, val, payName(k) + (f.pay === k ? " ✓" : "")]), sp.reduce((s, r) => s + r.amt, 0), { click: true })}</div></div>`;
   }
   h += `</div>`;
   // tételek listája: egy blokk egy kategóriája egy sor (lenyitható), a tervezett tételek soronként
@@ -2798,22 +2993,47 @@ function renderStats(){
   const og = S.sf.openG = S.sf.openG || {};
   const dcell = r => (r.d || r.ld) ? (r.d || r.ld).slice(5).replace("-", ".") + "." : mkShort(r.k);
   const srcChip = r => `<span class="chip">${r.src === "plan" ? "terv" : r.who === "reka" ? esc(partner()) : esc(payName(r.pay))}</span>`;
-  h += `<div class="card" id="stList" style="margin-top:16px;scroll-margin-top:70px"><div class="hd"><h2>Tételek${f.sc ? ` <span class="chip">${esc(SUBS[f.sc].name)}</span>` : ""}</h2><span class="muted small">${list.length} sor · ${fmt(list.reduce((s, r) => s + r.amt, 0))}</span><span class="spacer" style="flex:1"></span>
-    <div class="seg"><button data-sfsort="d" aria-pressed="${S.sf.sort !== "a"}">Dátum</button><button data-sfsort="a" aria-pressed="${S.sf.sort === "a"}">Összeg</button></div><button class="btn sm" data-act="stcsv">CSV</button></div>
-    <div class="bd muted small" style="padding:0 16px 8px">Egy blokk egy sor; rákattintva lenyílik kategóriánként és tételesen, a ceruzával szerkesztheted.</div>
+  const view = ["blocks","lines","names"].includes(S.sf.view) ? S.sf.view : "blocks";
+  const editBtn = r => r.sid ? `<button class="icon-btn edb" data-sid="${esc(r.sid)}" title="Blokk szerkesztése" aria-label="Szerkesztés">✎</button><button class="icon-btn edb" data-rep="${esc(r.sid)}" title="Ismét rögzítem (másolat mai dátummal)" aria-label="Ismét rögzítem">⧉</button>` : "";
+  const sortSeg = view === "names" ? [["c","Darab"],["a","Összeg"],["n","Név"]] : view === "lines" ? [["d","Dátum"],["a","Összeg"],["n","Név"]] : [["d","Dátum"],["a","Összeg"]];
+  const srt = sortSeg.some(([k]) => k === S.sf.sort) ? S.sf.sort : sortSeg[0][0];
+  const sumAll = rows.reduce((s, r) => s + r.amt, 0);
+  let head, body;
+  if (view === "blocks") {
+    head = `${list.length} blokk / sor · ${fmt(sumAll)}`;
+    body = `<div class="bd muted small" style="padding:0 16px 8px">Egy blokk egy sor; rákattintva lenyílik kategóriánként és tételesen, a ceruzával szerkesztheted.</div>
     <div class="tblwrap" style="max-height:60vh"><table class="t"><thead><tr><th>Dátum</th><th class="tx">Tétel</th><th class="tx">Bolt</th><th class="tx">Kategória</th><th class="tx">Forrás</th><th>Összeg</th></tr></thead><tbody>
     ${list.slice(0, 400).map(r => {
       if (!r.key) return `<tr><td class="num">${dcell(r)}</td><td class="tx nm">${esc(r.name)}</td><td class="tx">${esc(r.shop)}</td><td class="tx">${esc((SUBS[r.sc] || {}).name || "")}</td><td class="tx">${srcChip(r)}</td><td class="num">${fmt(r.amt, { noUnit: true })}</td></tr>`;
       const open = !!og[r.key], multi = r.n > 1, cats = Object.entries(r.cats).sort((x, y) => y[1] - x[1]);
       const catTxt = cats.map(([sc]) => (SUBS[sc] || {}).name || "").join(", ");
-      let h2 = `<tr class="grp ${multi ? "clk" : ""}" ${multi ? `data-og="${esc(r.key)}"` : ""}><td class="num">${dcell(r)}</td><td class="tx nm">${multi ? `<span class="caret">${open ? "▾" : "▸"}</span>` : ""}${esc(multi ? (r.shop || "Blokk") : r.items[0].name)}${multi ? ` <span class="muted small">${r.n} tétel</span>` : ""}<button class="icon-btn edb" data-sid="${esc(r.sid)}" title="Blokk szerkesztése" aria-label="Szerkesztés">✎</button></td><td class="tx">${esc(r.shop)}</td><td class="tx">${esc(catTxt)}</td><td class="tx">${srcChip(r)}</td><td class="num">${fmt(r.amt, { noUnit: true })}</td></tr>`;
+      let h2 = `<tr class="grp ${multi ? "clk" : ""}" ${multi ? `data-og="${esc(r.key)}"` : ""}><td class="num">${dcell(r)}</td><td class="tx nm">${multi ? `<span class="caret">${open ? "▾" : "▸"}</span>` : ""}${esc(multi ? (r.shop || "Blokk") : r.items[0].name)}${multi ? ` <span class="muted small">${r.n} tétel</span>` : ""}<button class="icon-btn edb" data-sid="${esc(r.sid)}" title="Blokk szerkesztése" aria-label="Szerkesztés">✎</button><button class="icon-btn edb" data-rep="${esc(r.sid)}" title="Ismét rögzítem (másolat mai dátummal)" aria-label="Ismét rögzítem">⧉</button></td><td class="tx">${esc(r.shop)}</td><td class="tx">${esc(catTxt)}</td><td class="tx">${srcChip(r)}</td><td class="num">${fmt(r.amt, { noUnit: true })}</td></tr>`;
       if (open && multi) for (const [sc, v] of cats) {
         if (cats.length > 1) h2 += `<tr class="sub cath"><td></td><td class="tx nm">${esc((SUBS[sc] || {}).name || "")}</td><td></td><td></td><td></td><td class="num">${fmt(v, { noUnit: true })}</td></tr>`;
         h2 += r.items.filter(i => i.sc === sc).sort((x, y) => y.amt - x.amt).map(i => `<tr class="sub ${cats.length > 1 ? "deep" : ""}"><td></td><td class="tx nm">${esc(i.name)}</td><td></td><td></td><td></td><td class="num muted">${fmt(i.amt, { noUnit: true })}</td></tr>`).join("");
       }
       return h2;
     }).join("")}
-    ${list.length > 400 ? `<tr><td colspan="6" class="muted">… és még ${list.length - 400} sor (szűkíts, vagy töltsd le CSV-ben).</td></tr>` : ""}</tbody></table></div></div>`;
+    ${list.length > 400 ? `<tr><td colspan="6" class="muted">… és még ${list.length - 400} sor (szűkíts, vagy töltsd le CSV-ben).</td></tr>` : ""}</tbody></table></div>`;
+  } else if (view === "lines") {
+    const L = rows.slice().sort((x, y) => srt === "a" ? y.amt - x.amt : srt === "n" ? (x.name || "").localeCompare(y.name || "", "hu") : (y.d || y.ld || "").localeCompare(x.d || x.ld || ""));
+    head = `${L.length} tétel · ${fmt(sumAll)}`;
+    body = `<div class="bd muted small" style="padding:0 16px 8px">Minden blokksor és tervezett tétel külön sorban, a fenti szűrők szerint.</div>
+    <div class="tblwrap" style="max-height:60vh"><table class="t"><thead><tr><th>Dátum</th><th class="tx">Tétel</th><th class="tx">Bolt</th><th class="tx">Kategória</th><th class="tx">Forrás</th><th>Összeg</th></tr></thead><tbody>
+    ${L.slice(0, 1000).map(r => `<tr><td class="num">${dcell(r)}</td><td class="tx nm">${esc(r.name)}${editBtn(r)}</td><td class="tx">${esc(r.shop)}</td><td class="tx">${esc((SUBS[r.sc] || {}).name || "")}</td><td class="tx">${srcChip(r)}</td><td class="num">${fmt(r.amt, { noUnit: true })}</td></tr>`).join("")}
+    ${L.length > 1000 ? `<tr><td colspan="6" class="muted">… és még ${L.length - 1000} tétel (szűkíts, vagy töltsd le CSV-ben).</td></tr>` : ""}</tbody></table></div>`;
+  } else {
+    const N = nameSummary(rows).sort((x, y) => srt === "a" ? y.v - x.v : srt === "n" ? x.name.localeCompare(y.name, "hu") : y.q - x.q || y.v - x.v);
+    head = `${N.length} féle tétel · ${fmt(sumAll)}`;
+    body = `<div class="bd muted small" style="padding:0 16px 8px">Az azonos nevű tételek egy sorban (kis- és nagybetű, ékezet nem számít). Egy névre kattintva tételesen látod.</div>
+    <div class="tblwrap" style="max-height:60vh"><table class="t"><thead><tr><th class="tx">Tétel</th><th class="tx">Kategória</th><th>Darab</th><th>Alkalom</th><th>Átlagár</th><th>Összeg</th></tr></thead><tbody>
+    ${N.slice(0, 1000).map(o => `<tr><td class="tx nm"><a href="#" data-sname="${esc(o.name)}">${esc(o.name)}</a></td><td class="tx">${esc(o.cats.map(sc => (SUBS[sc] || {}).name || "").join(", "))}</td><td class="num">${fmtN(o.q, 2)}</td><td class="num muted">${o.n}</td><td class="num muted">${fmt(o.v / o.q, { noUnit: true })}</td><td class="num">${fmt(o.v, { noUnit: true })}</td></tr>`).join("")}
+    </tbody><tfoot><tr><td class="tx"><b>Összesen</b></td><td></td><td class="num"><b>${fmtN(N.reduce((s, o) => s + o.q, 0), 2)}</b></td><td class="num">${N.reduce((s, o) => s + o.n, 0)}</td><td></td><td class="num"><b>${fmt(sumAll, { noUnit: true })}</b></td></tr></tfoot></table></div>`;
+  }
+  h += `<div class="card" id="stList" style="margin-top:16px;scroll-margin-top:70px"><div class="hd" style="flex-wrap:wrap;gap:8px"><h2>Tételek${f.sc ? ` <span class="chip">${esc(SUBS[f.sc].name)}</span>` : ""}${f.pay ? ` <button class="chipbtn" data-payclear aria-pressed="true" title="Szűrés törlése">${esc(payName(f.pay))} ✕</button>` : ""}${f.q ? ` <button class="chipbtn" data-qclear aria-pressed="true" title="Keresés törlése">„${esc(f.q)}” ✕</button>` : ""}</h2><span class="muted small">${head}</span><span class="spacer" style="flex:1"></span>
+    <div class="seg" role="group" aria-label="Nézet"><button data-sfview="blocks" aria-pressed="${view === "blocks"}">Blokkonként</button><button data-sfview="lines" aria-pressed="${view === "lines"}">Tételenként</button><button data-sfview="names" aria-pressed="${view === "names"}">Név szerint</button></div>
+    <div class="seg" role="group" aria-label="Rendezés">${sortSeg.map(([k, n]) => `<button data-sfsort="${k}" aria-pressed="${srt === k}">${n}</button>`).join("")}</div><button class="btn sm" data-act="stcsv">CSV</button></div>
+    ${body}</div>`;
   // besorolás és import
   h += `<div class="sgrid" style="margin-top:16px"><div class="card"><div class="hd"><h2>A tervezett tételek besorolása</h2></div><div class="bd muted small" style="padding-bottom:6px">A Hónap fül felosztása nem változik, ez csak a statisztikát érinti.</div><div class="smap">
     ${items().filter(it => !isIncomeCat(it.cat)).map(it => `<label class="${it.off ? "off" : ""}"><span>${esc(it.name)}</span><select class="inp" data-smap="${esc(it.id)}">${scOptions(itemSc(it), true)}</select></label>`).join("")}</div></div>
@@ -2868,6 +3088,18 @@ function catBars(el, items, total){
     tip.style.left = Math.max(0, lx) + "px"; tip.style.top = "8px"; tip.classList.add("on"); });
   svg.addEventListener("pointerleave", () => tip.classList.remove("on"));
 }
+/* név szerinti összesítés; a gyors bevitel „(3 × 499)” utótagja a darabszámba megy, nem a névbe */
+const QTY_RE = /\s*\((\d+(?:[.,]\d+)?)\s*×\s*[\d\s.,]+\)\s*$/;
+function nameSummary(rows){
+  const m = {};
+  for (const r of rows) {
+    const raw = (r.name || "").trim(); if (!raw) continue;
+    const mq = raw.match(QTY_RE), name = mq ? raw.slice(0, mq.index).trim() : raw, q = mq ? parseFloat(mq[1].replace(",", ".")) || 1 : 1;
+    const o = m[fold(name)] = m[fold(name)] || { name, n: 0, q: 0, v: 0, cats: [] };
+    o.n++; o.q += q; o.v += r.amt; if (!o.cats.includes(r.sc)) o.cats.push(r.sc);
+  }
+  return Object.values(m);
+}
 function topTable(rows, key, n){
   const m = {}; for (const r of rows) { const k = (r[key] || "").trim(); if (!k) continue; const o = m[fold(k)] = m[fold(k)] || { name: k, n: 0, v: 0 }; o.n++; o.v += r.amt; }
   const e = Object.values(m).sort((x, y) => y.n - x.n || y.v - x.v).slice(0, n);
@@ -2895,15 +3127,21 @@ $("#view-stats").addEventListener("click", async e => {
   const t = e.target;
   const src = t.closest("[data-sfsrc]"); if (src) { S.sf.src[src.dataset.sfsrc] = !S.sf.src[src.dataset.sfsrc]; return renderStats(); }
   if (t.closest("[data-sfns]")) { S.sf.ns = !S.sf.ns; return renderStats(); }
-  if (t.closest("[data-junk]")) { S.sf.sc = "etk.nasi"; S.sf.g = ""; renderStats(); const el = document.querySelector("#stList"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  if (t.closest("[data-junk]")) { S.sf.sc = "etk.nasi"; S.sf.g = ""; S.sf.view = "lines"; LS.set("stView", "lines"); renderStats(); const el = document.querySelector("#stList"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (t.closest("[data-scclear]")) { S.sf.sc = null; return renderStats(); }
+  if (t.closest("[data-payclear]")) { S.sf.pay = ""; return renderStats(); }
   const lg = t.closest("[data-stk]");
   if (lg) { const key = S.sf.g ? "g:" + S.sf.g : "all", h = (S.sf.hide = S.sf.hide || {})[key] = { ...(S.sf.hide[key] || {}) }, id = lg.dataset.stk; if (h[id]) delete h[id]; else h[id] = true; return renderStats(); }
   if (t.closest("[data-stkall]")) { const key = S.sf.g ? "g:" + S.sf.g : "all"; if (S.sf.hide) delete S.sf.hide[key]; return renderStats(); }
   const so = t.closest("[data-sfsort]"); if (so) { S.sf.sort = so.dataset.sfsort; return renderStats(); }
+  const vw = t.closest("[data-sfview]"); if (vw) { S.sf.view = vw.dataset.sfview; LS.set("stView", S.sf.view); return renderStats(); }
+  const sn = t.closest("[data-sname]"); if (sn) { e.preventDefault(); S.sf.q = sn.dataset.sname; S.sf.view = "lines"; LS.set("stView", "lines"); renderStats(); const el = document.querySelector("#stList"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  if (t.closest("[data-qclear]")) { S.sf.q = ""; return renderStats(); }
   const hb = t.closest("[data-hb]");
+  if (hb && hb.dataset.hb.startsWith("pay:")) { const k = hb.dataset.hb.slice(4); S.sf.pay = S.sf.pay === k ? "" : k; renderStats(); const el = document.querySelector("#stList"); if (el && S.sf.pay) el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (hb) { const id = hb.dataset.hb; if (id.startsWith("sc:")) S.sf.selSc = S.sf.selSc === id.slice(3) ? null : id.slice(3); else S.sf.open[id] = !S.sf.open[id]; return renderStats(); }
   const sq = t.closest("[data-sq]"); if (sq) { e.preventDefault(); S.sf.q = sq.dataset.sq; renderStats(); return window.scrollTo({ top: 0, behavior: "smooth" }); }
+  const rp = t.closest("[data-rep]"); if (rp) { e.stopPropagation(); return repeatSpend(rp.dataset.rep); }
   const ed = t.closest("[data-sid]"); if (ed) { e.stopPropagation(); return openSpendEdit(ed.dataset.sid); }
   const ogr = t.closest("tr[data-og]"); if (ogr) { const og = S.sf.openG = S.sf.openG || {}; og[ogr.dataset.og] = !og[ogr.dataset.og]; return renderStats(); }
   const a = t.closest("[data-act]"); if (!a) return;
@@ -2922,6 +3160,11 @@ $("#view-stats").addEventListener("click", async e => {
 $("#view-stats").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("[data-hb]")) e.target.click(); });
 function statCsv(){
   const q = s => `"${String(s ?? "").replace(/"/g, '""')}"`;
+  if (S.sf.view === "names") {
+    const L = [["Tétel","Kategória","Darab","Alkalom","Átlagár (Ft)","Összeg (Ft)"].map(q).join(";")];
+    for (const o of nameSummary(statRows()).sort((x, y) => y.v - x.v)) L.push([o.name, o.cats.map(sc => (SUBS[sc] || {}).name || "").join(", "), String(o.q).replace(".", ","), o.n, Math.round(o.v / o.q), Math.round(o.v)].map(q).join(";"));
+    return download(`budget-tetelek-nev-szerint-${today()}.csv`, "\ufeff" + L.join("\r\n"), "text/csv");
+  }
   const lines = [["Hónap","Dátum","Tétel","Bolt","Főcsoport","Kategória","Forrás","Fizetés","Összeg (Ft)"].map(q).join(";")];
   for (const r of statRows()) lines.push([r.k, r.d || "", r.name, r.shop, (SUBS[r.sc] || {}).gname || "", (SUBS[r.sc] || {}).name || "", r.src === "plan" ? "terv" : r.who === "reka" ? partner() : "saját", payName(r.pay), Math.round(r.amt)].map(q).join(";"));
   download(`budget-statisztika-${today()}.csv`, "﻿" + lines.join("\r\n"), "text/csv");
