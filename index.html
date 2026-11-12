@@ -431,8 +431,8 @@ table.t tr.sub.deep td.nm{padding-left:46px}
 .qfindl .small{white-space:nowrap}
 
 .irow .mpick{min-height:34px;justify-content:flex-start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;padding:4px 8px}
-.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
-.mgrid .chipbtn{justify-content:center}
+.monpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
+.monpick .chipbtn{justify-content:center}
 
 /* leggyakoribb tételek: a hosszú név ne nyújtsa ki a kártyát */
 .toptbl{width:100%;table-layout:fixed}
@@ -474,7 +474,7 @@ const SEED = {"app": "budget", "version": 1, "savedAt": null, "settings": {"reka
 <script>
 "use strict";
 /* ================= config ================= */
-const APP_VERSION = "1.3 · 2026.11.12. 09:46";   // a build.py írja be a build idejét
+const APP_VERSION = "1.3 · 2026.11.12. 09:59";   // a build.py írja be a build idejét
 const CLIENT_ID_DEFAULT = "9dc570fe-f641-46ed-93be-5414be4ae0c9";            // Microsoft app (client) ID – a Beállításokban is megadható
 const GRAPH_SCOPES = ["Files.ReadWrite"];
 const FILE = "budget.json";
@@ -2730,12 +2730,12 @@ function openMonthPick(id){
     : HU_MON3.map((n, i) => [i + 1, cap(HU_MONTHS[i])]);
   openDrawer(() => esc(it.name) + ": hónapok", () => `
     <p class="muted small" style="margin:0">${kind === "dates" ? "Konkrét hónapok: csak a kijelöltekben szerepel, nem ismétlődik." : "Minden évben a kijelölt hónapokban szerepel."} A kijelölt hónapokban az Alapterv (${it.plan ? fmt(it.plan) : "még nincs megadva"}) kerül a tervbe, a többiben 0.</p>
-    <div class="mgrid">${opts.map(([v, n]) => `<button type="button" class="chipbtn" data-dr="t:${v}" aria-pressed="${sel.has(v)}">${esc(n)}</button>`).join("")}</div>
+    <div class="monpick">${opts.map(([v, n]) => `<button type="button" class="chipbtn" data-dr="t:${v}" aria-pressed="${sel.has(v)}">${esc(n)}</button>`).join("")}</div>
     <p class="muted small" style="margin:0">Mentéskor az aktuális és a már létrehozott, le nem zárt jövőbeli hónapok terve is igazodik; a lezárt hónapokhoz és a már kifizetett sorokhoz nem nyúlok.</p>
     <div class="actions"><button class="btn primary" data-dr="save">${ICON.check} Mentés</button></div>`);
   DR.handler = (what) => {
     if (what.startsWith("t:")) { const v = kind === "dates" ? what.slice(2) : +what.slice(2); sel.has(v) ? sel.delete(v) : sel.add(v);
-      document.querySelectorAll(".mgrid [data-dr]").forEach(b => b.setAttribute("aria-pressed", sel.has(kind === "dates" ? b.dataset.dr.slice(2) : +b.dataset.dr.slice(2)))); return; }
+      document.querySelectorAll(".monpick [data-dr]").forEach(b => b.setAttribute("aria-pressed", sel.has(kind === "dates" ? b.dataset.dr.slice(2) : +b.dataset.dr.slice(2)))); return; }
     if (what !== "save") return;
     let n = 0;
     withUndo(`${it.name}: hónapok mentve.`, () => {
