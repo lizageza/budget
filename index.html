@@ -118,8 +118,12 @@ input[type=checkbox]{width:calc(var(--fs) * .9);height:calc(var(--fs) * .9);acce
 .kv dd{margin:0;text-align:right;white-space:nowrap}
 .kv dd.full,.kv dd.bar{grid-column:1/-1;text-align:right}
 .kv dd.full{white-space:normal}
+.kv .tot{color:var(--k1)}
+.kv dd.tot{color:var(--k0)}
 .kv .sep{grid-column:1/-1;border-top:2px solid var(--k0);margin:6px 0}
-.w-red .kv .sep{border-color:var(--kF)}
+.w-red .kv .tot{color:var(--k1)}
+.kv dd.tot{color:var(--k0)}
+.kv .sep{border-color:var(--kF)}
 .kv .bar{white-space:nowrap;overflow:hidden;color:var(--k1)}
 .kv .bar b{color:var(--k0)}
 .kv dd .btn{margin:2px 0 4px 8px}
@@ -230,7 +234,7 @@ table.t a{color:var(--k1)}
 .chart{position:relative}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
 .chart .gl{stroke:#008080;stroke-width:1}
-.chart .ax{fill:var(--k1);font:17px "VGA",monospace}
+.chart .ax{fill:var(--k1);font:calc(var(--fs) * .8) "VGA",monospace}
 .chart .hit{fill:transparent;cursor:crosshair}
 .chart rect[rx],.chart clipPath rect{rx:0}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px}
@@ -313,6 +317,7 @@ details.dcard .amt{text-align:right;display:grid}
 .drawer .db{padding:12px 14px;overflow:auto;display:grid;gap:12px;align-content:start;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 .drawer .kpi{box-shadow:none}
 .drawer .diffline b{color:var(--k1)}
+.drawer .field .seg{align-self:flex-start;margin:2px 0 4px}
 .drawer .seg button[aria-pressed=true]{background:var(--k1);color:var(--kF)}
 .dlg{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:rgba(0,0,0,.55);padding:12px;overflow:auto}
 .dlg .win{width:min(760px,96vw);padding:calc(var(--u) * .8) 16px 14px}
@@ -395,7 +400,7 @@ const SEED = {"app": "budget", "version": 1, "savedAt": null, "settings": {"reka
 <script>
 "use strict";
 /* ================= config ================= */
-const APP_VERSION = "2.0 lite · 2026.11.18. 14:58";   // a build.py írja be a build idejét
+const APP_VERSION = "2.0 lite · 2026.11.18. 15:13";   // a build.py írja be a build idejét
 const CLIENT_ID_DEFAULT = "9dc570fe-f641-46ed-93be-5414be4ae0c9";            // Microsoft app (client) ID – a Beállításokban is megadható
 const GRAPH_SCOPES = ["Files.ReadWrite"];
 const FILE = "budget.json";
@@ -1219,15 +1224,15 @@ function openDebtEntry(id, type){
   };
 }
 function debtLogHtml(dt){
-  const base = dt.baseAt || "";
-  const rows = [];
-  for (const [lid, l] of Object.entries(dt.log || {})) rows.push({ at: l.at, txt: `${l.t === "fee" ? "Díj" : "Költés"}${l.note ? ": " + esc(l.note) : ""}`, amt: +l.amt, lid, old: dt.snap ? !!dt.snap["l:" + lid] : (l.at || "") <= base });
-  for (const k of monthKeys()) for (const x of Object.values(month(k).extras)) if (x.debt === dt.id) rows.push({ at: x.at || x.u, txt: esc(x.name), amt: -(+(x.a ?? x.p) || 0) });
-  for (const s of spends()) if (s.pay === dt.id && (s.who || "geza") === "geza") rows.push({ at: s.at, txt: "Költés: " + esc(s.shop || (s.lines[0] || {}).n || ""), amt: spendHuf(s), old: dt.snap ? !!dt.snap["s:" + s.id] : (s.at || "") <= base });
+  // csak a még be nem számított tételek; ami már benne van a rögzített egyenlegben, nem érdekes
+  const base = dt.baseAt || "", rows = [];
+  for (const [lid, l] of Object.entries(dt.log || {})) { const old = dt.snap ? !!dt.snap["l:" + lid] : (l.at || "") <= base; if (!old) rows.push({ at: l.at, txt: `${l.t === "fee" ? "Díj" : "Költés"}${l.note ? ": " + esc(l.note) : ""}`, amt: +l.amt, lid }); }
+  for (const k of monthKeys()) for (const [xid, x] of Object.entries(month(k).extras)) if (x.debt === dt.id) { const old = dt.snap ? !!dt.snap["x:" + k + "/" + xid] : (x.at || x.u || "") <= base; if (!old) rows.push({ at: x.at || x.u, txt: esc(x.name), amt: -(+(x.a ?? x.p) || 0) }); }
   if (!rows.length) return "";
   rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
-  return `<div><div class="k" style="margin-bottom:6px">Napló</div>${rows.slice(0, 12).map(r => `<div style="display:flex;gap:8px;align-items:center;font-size:13.5px;padding:4px 0;border-top:1px solid var(--line-2);${r.old ? "opacity:.5" : ""}"><span class="muted num" style="font-size:12px">${r.at ? new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" }) : ""}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.txt}</span><span class="num ${r.amt > 0 ? "neg" : "pos"}">${r.amt > 0 ? "+" : "−"}${fmt(Math.abs(r.amt), { noUnit: true })}</span>${r.lid ? `<button class="icon-btn" data-dr="rm:${r.lid}" aria-label="Törlés">${ICON.trash}</button>` : ""}</div>`).join("")}${rows.some(r => r.old) ? `<p class="muted small" style="margin:6px 0 0">A halvány tételek már benne vannak a legutóbb rögzített egyenlegben; ha utólag módosítod őket, a különbség függő tételként jelenik meg.</p>` : ""}</div>`;
+  return `<div><div class="k">Rögzített tételek az egyenleg megadása óta</div>${rows.slice(0, 12).map(r => `<div class="prow"><span class="muted">${r.at ? new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" }) : ""}</span><span class="t">${r.txt}</span><span class="${r.amt > 0 ? "neg" : "pos"}">${r.amt > 0 ? "+" : "−"}${fmt(Math.abs(r.amt), { noUnit: true })}${r.lid ? ` <button class="icon-btn" data-dr="rm:${r.lid}" aria-label="Törlés">×</button>` : ""}</span></div>`).join("")}</div>`;
 }
+
 function getRaw(k, kind, id){ const mo = month(k); return kind === "extra" ? mo.extras[id] : mo.lines[id]; }
 function setLine(k, kind, id, patch){
   const mo = month(k), box = kind === "extra" ? mo.extras : mo.lines;
@@ -1334,14 +1339,25 @@ function renderMonth(){
       ${c.rekaPaid == null
         ? `<dt>${esc(pNak())} utalandó (${D().settings.rekaPct}%)</dt><dd>${ftn(c.reka)}</dd><dd class="full"><span class="muted">neked marad: ${ftn(c.bal.p - c.reka)}</span> <button class="btn sm" data-act="reka">Utalva</button></dd>`
         : `<dt>${esc(partner())}: utalva ${mo.meta.rekaAt ? new Date(mo.meta.rekaAt).toLocaleDateString("hu-HU", { month: "short", day: "numeric" }) : ""}</dt><dd>√ ${ftn(c.rekaPaid)}</dd><dd class="full"><button class="btn sm ghost" data-act="reka">Módosít</button></dd>`}
-      <dt>Teljes vagyon</dt><dd>${ftn(t.total)}</dd>
-      <dd class="full muted">Revolut ${ftn(t.revHuf)} + megtakarítás ${ftn(t.total - t.revHuf)}</dd>
     </dl></section>`;
   const px = D().assets.px || {};
   left += `<section class="win w-gray rates"><span class="wt">Árfolyamok</span>
     <div class="rt"><span></span><span></span><span class="h">1 nap</span><span class="h">1 hét</span><span class="h">1 hó</span>
     ${tickerRows().map(r => `<span>${esc(r.n)}</span><span class="v">${r.v}</span>${chgTxt(r.c && r.c.d)}${chgTxt(r.c && r.c.w)}${chgTxt(r.c && r.c.m)}`).join("")}</div>
     <div class="acts"><button class="btn sm" data-act="px">${ICON.refresh} Frissítés</button><span class="muted">${px.at ? new Date(px.at).toLocaleTimeString("hu-HU", { hour: "2-digit", minute: "2-digit" }) : ""}</span></div></section>`;
+  const epv = epBalance();
+  left += `<section class="win w-cyan wealth"><span class="wt">Vagyon</span>
+    <dl class="kv">
+      <dt>Raiffeisen</dt><dd>${ftn(t.raif)}</dd>
+      <dt>Revolut</dt><dd>${ftn(t.rev)}</dd>
+      ${t.stock ? `<dt>Részvény</dt><dd>${ftn(t.stock)}</dd>` : ""}
+      ${t.crypto ? `<dt>Kripto</dt><dd>${ftn(t.crypto)}</dd>` : ""}
+      <div class="sep"></div>
+      <dt>Összes vagyon</dt><dd>${ftn(t.total)}</dd>
+      <dt>Tartozások</dt><dd class="neg">−${ftn(t.debts)}</dd>
+      <dt class="tot">Nettó vagyon</dt><dd class="tot">${ftn(t.net)} Ft</dd>
+      ${epv != null ? `<dt>Egészségpénztár (külön)</dt><dd>${ftn(epv)}</dd>` : ""}
+    </dl><div class="acts"><button class="btn sm" data-act="goassets">Részletek (V)</button></div></section>`;
 
   // ---- havi terv
   const COLS = ["var(--k5)","var(--k6)","var(--k2)","var(--k4)","var(--k8)","var(--k9)","#008080"];
@@ -1421,6 +1437,7 @@ $("#view-month").addEventListener("click", e => {
     if (act === "debt") return openDebtDetail(a.dataset.id);
     if (act === "debtnew") return openDebtNew();
     if (act === "ep") return openEpDetail();
+    if (act === "goassets") return setTab("assets");
     if (act === "revbook" || act === "revinc") {
       const mo = month(S.mk), c = calc(S.mk), m = { ...mo.meta };
       if (act === "revbook") { m.revolut = c.revolut - c.spendRev.sum + c.incRev.sum; }
@@ -1450,7 +1467,10 @@ function openDebtDetail(id){
         ${pd.rows.slice(0, 8).map(r => `<div class="prow"><span class="muted">${new Date(r.at).toLocaleDateString("hu-HU", { month: "2-digit", day: "2-digit" })}</span><span class="t">${esc(r.txt)}</span><span class="${r.amt > 0 ? "neg" : "pos"}">${r.amt > 0 ? "+" : "−"}${ftn(Math.abs(r.amt))}</span></div>`).join("")}
         <p class="muted">Ezek már benne vannak a fenti tartozásban. Ha a bank szerinti egyenleg is így áll, könyveld be őket; ha a legutóbb megadott egyenleg már tartalmazta őket, jelöld így.</p>
         <div class="actions"><button class="btn primary" data-dr="dbook">√ Bekönyvelem</button><button class="btn" data-dr="dinc">Már benne volt</button></div></div>` : ""}
-      <div class="field"><label for="dbalIn">Egyenleg a bank szerint (tartozás most)</label><div class="addline"><input class="inp num" inputmode="numeric" id="dbalIn" placeholder="${Math.round(f.rem)}"><button class="btn" data-dr="dbal">Rögzítés</button></div>
+      <div class="field"><label for="dbalIn">Egyenleg a bank szerint</label>
+        <div class="seg" role="group" aria-label="Mit írsz be">${lim ? `<button data-dr="bm:avail" aria-pressed="${balMode() === "avail"}">Elérhető keret</button>` : ""}<button data-dr="bm:debt" aria-pressed="${!lim || balMode() === "debt"}">Tartozás</button></div>
+        <div class="addline"><input class="inp num" inputmode="numeric" id="dbalIn" placeholder="${lim && balMode() === "avail" ? Math.round(Math.max(lim - f.rem, 0)) : Math.round(f.rem)}"><button class="btn" data-dr="dbal">Rögzítés</button></div>
+        ${lim && balMode() === "avail" ? `<span class="muted">A tartozást a keretből számolom: ${ftn(lim)} − elérhető.</span>` : ""}
         <span class="muted">A havi törlesztést ${debtAutoFrom(d) === currentMk() ? "erre a hónapra már levontnak" : "erre a hónapra még levonandónak"} veszem.</span></div>
       <div class="actions"><button class="btn" data-dr="entry">+ Költés, díj vagy eseti törlesztés…</button></div>
       ${debtLogHtml(d)}`;
@@ -1459,11 +1479,19 @@ function openDebtDetail(id){
     const dt = D().assets.debts[id]; if (!dt) return;
     if (what === "entry") { closeDrawer(); return openDebtEntry(id); }
     if (what.startsWith("rm:")) { const l = { ...(dt.log || {}) }; delete l[what.slice(3)]; dt.log = l; stamp(dt); persist(); return renderAll(); }
-    if (what === "dbal") { const v = parseAmt($("#dbalIn").value); if (v == null || Number.isNaN(v)) return toast("Add meg a bank szerinti tartozást."); return withUndo(`${dt.name}: egyenleg rögzítve, ${fmt(v)}.`, () => debtSetBalance(dt, v)); }
+    if (what.startsWith("bm:")) { LS.set("debtBalMode", what.slice(3)); return DR.refresh(); }
+    if (what === "dbal") {
+      const x = parseAmt($("#dbalIn").value); if (x == null || Number.isNaN(x)) return toast("Add meg az összeget.");
+      const lim = +dt.limit || 0, avail = lim && balMode() === "avail";
+      if (avail && x > lim) return toast("Az elérhető összeg nem lehet nagyobb a keretnél.");
+      const v = avail ? lim - x : x;
+      return withUndo(`${dt.name}: ${avail ? `elérhető ${fmt(x)}, ` : ""}tartozás ${fmt(v)}.`, () => debtSetBalance(dt, v));
+    }
     if (what === "dbook") return withUndo(`${dt.name}: bekönyvelve, tartozás ${fmt(debtRemaining(dt))}.`, () => debtSetBalance(dt, debtRemaining(dt)));
     if (what === "dinc") { const pd = debtPending(dt); return withUndo(`${dt.name}: ${pd.rows.length} tétel kivéve, az egyenleg marad.`, () => { const keep = debtRemaining(dt) - pd.sum; debtSetBalance(dt, keep); }); }
   };
 }
+const balMode = () => LS.get("debtBalMode", "avail");
 function openEpDetail(){ openDrawer(() => "Egészségpénztár", () => "", () => `<div class="epcard">${epBody()}</div>`); }
 /* ================= drawer ================= */
 const DR = { open: false, refresh: null };
@@ -1707,7 +1735,7 @@ function niceStep(max){ const raw = max / 4, p = Math.pow(10, Math.floor(Math.lo
 const kFmt = v => v >= 1e6 ? (v / 1e6).toLocaleString("hu-HU", { maximumFractionDigits: 1 }) + " M" : v >= 1e4 ? Math.round(v / 1000) + " e" : v >= 1000 ? (v / 1000).toLocaleString("hu-HU", { maximumFractionDigits: 1 }) + " e" : String(Math.round(v));
 function stackedBars(el, cols, series, opt){
   // cols: [{key,label,cur,values:{sid:v}}], series: [{id,name,color}]
-  const W = 720, H = 250, ml = 44, mr = 6, mt = 10, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
+  const W = Math.max(300, el.clientWidth || 720), H = 240, ml = 64, mr = 8, mt = 10, mb = 30, iw = W - ml - mr, ih = H - mt - mb;
   const tot = c => series.reduce((s, x) => s + Math.max(c.values[x.id] || 0, 0), 0);
   const max = Math.max(1000, ...cols.map(tot)), step = niceStep(max), top = Math.ceil(max / step) * step;
   const bw = iw / cols.length, bar = Math.min(38, bw * 0.62);
@@ -1739,7 +1767,7 @@ function stackedBars(el, cols, series, opt){
   svg.addEventListener("pointerleave", () => tip.classList.remove("on"));
 }
 function lineChart(el, pts, opt){
-  const W = 720, H = 200, ml = 50, mr = 10, mt = 12, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
+  const W = Math.max(300, el.clientWidth || 720), H = 150, ml = 70, mr = 40, mt = 12, mb = 28, iw = W - ml - mr, ih = H - mt - mb;
   const vals = pts.map(p => p.v), lo0 = Math.min(...vals), hi0 = Math.max(...vals);
   const step = niceStep((hi0 - lo0) || hi0 || 1), lo = Math.floor(lo0 / step) * step, hi = Math.ceil(hi0 / step) * step || step;
   const x = i => ml + (pts.length === 1 ? iw / 2 : i / (pts.length - 1) * iw), y = v => mt + ih - (v - lo) / ((hi - lo) || 1) * ih;
@@ -2134,7 +2162,7 @@ async function openStore(store){
   startApp(); status("Betöltve", "ok"); if (pending) flush();
 }
 function startApp(){
-  try { migrateFuel(); } catch (x) { console.warn(x); }
+  try { migrateFuel(); liteLogClean(); } catch (x) { console.warn(x); }
   S.mk = S.mk || currentMk();
   if (!ST.store) status("nem ment", "demo");
   S.tab = "month";                                          // indításkor mindig a Hónap fül
@@ -2213,7 +2241,7 @@ function trendSeries(rows, ms){
 }
 function catBars(el, items, total){
   if (!items.length) { el.innerHTML = `<p class="muted small" style="margin:0">Nincs adat.</p>`; return; }
-  const W = 720, H = 260, ml = 44, mr = 6, mt = 22, mb = 34, iw = W - ml - mr, ih = H - mt - mb;
+  const W = Math.max(300, el.clientWidth || 720), H = 240, ml = 64, mr = 8, mt = 24, mb = 34, iw = W - ml - mr, ih = H - mt - mb;
   const max = Math.max(1000, ...items.map(i => i.v)), step = niceStep(max), top = Math.ceil(max / step) * step;
   const bw = iw / items.length, bar = Math.min(54, bw * 0.62), y = v => mt + ih - v / top * ih;
   let g = ""; for (let v = 0; v <= top + step / 2; v += step) g += `<line class="gl" x1="${ml}" x2="${W - mr}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ml - 6}" y="${y(v) + 4}" text-anchor="end">${v ? kFmt(v) : "0"}</text>`;
@@ -2410,6 +2438,25 @@ function liteMigrate(){
   return n;
 }
 
+/* egyszeri takarítás: a kártyanaplóban a már bekönyvelt költés-tételek (a régi programból) törlése; az egyenleg nem változik */
+function liteLogClean(){
+  const st = D().settings; if ((st.mig || []).includes("lite2")) return;
+  let n = 0;
+  for (const dt of Object.values(D().assets.debts)) {
+    const log = { ...(dt.log || {}) }, snap = dt.snap ? { ...dt.snap } : null, base = dt.baseAt || "";
+    let ch = false;
+    for (const [lid, l] of Object.entries(log)) {
+      if (l.t === "fee") continue;                         // a díj a statisztikában számít, marad
+      const old = snap ? (snap["l:" + lid] && Math.round(+l.amt || 0) === snap["l:" + lid].a) : (l.at || "") <= base;
+      if (!old) continue;
+      delete log[lid]; if (snap) delete snap["l:" + lid]; ch = true; n++;
+    }
+    if (ch) { dt.log = log; if (snap) dt.snap = snap; stamp(dt); }
+  }
+  st.mig = [...(st.mig || []), "lite2"]; stamp(st);
+  if (n && ST.store) persist();
+}
+
 /* ================= betűméret, billentyűk ================= */
 const FONT_SIZES = [18, 20, 22, 26];
 function fontSize(){ return LS.get("fs", matchMedia("(max-width:760px)").matches ? 18 : 20); }
@@ -2433,6 +2480,10 @@ document.addEventListener("keydown", e => {
     return k === " " ? toggleLine(S.mk, kind, id) : openLine(S.mk, kind, id);
   }
 });
+
+/* a diagramok a tényleges szélességhez igazodnak: átméretezéskor újrarajzolás */
+let rzT, rzW = innerWidth;
+addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (innerWidth !== rzW && S.data && ["year","stats","assets"].includes(S.tab)) { rzW = innerWidth; renderAll(); } }, 200); });
 
 boot();
 
